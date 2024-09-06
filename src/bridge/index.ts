@@ -1,8 +1,8 @@
 import { SPLToken } from '@neonevm/token-transfer-core';
-import { transferSolanaToNeon, transferNeonToSolana } from './bridge/neon';
-import { transferERC20TokenToSolana, transferSPLTokenToNeonEvm } from './bridge/transfer';
+import { transferSolanaToNeon, transferNeonToSolana } from './neon';
+import { transferERC20TokenToSolana, transferSPLTokenToNeonEvm } from './transfer';
 
-import tokensData from "./bridge/utils/token-list.json";
+import tokensData from "./utils/token-list.json";
 
 const main = async () => {
   try {
