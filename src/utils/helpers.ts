@@ -7,6 +7,10 @@ import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, slippage, swapDeadline, WRAPPED_NEO
 import { IDEX, ITokens } from "../core/interfaces";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 
+export function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
 export async function swapTokens(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, amountIn: BigNumber): Promise<any> {
     // keep this data in memory instead of in data..
     const allowance = await getAllowance(dex.router, wallet, TOKEN_ADDRESS_FROM.address);

@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.delay = delay;
 exports.swapTokens = swapTokens;
 exports.getBalance = getBalance;
 exports.checkPrice = checkPrice;
@@ -20,6 +21,9 @@ const bignumber_1 = require("@ethersproject/bignumber");
 const contracts_1 = require("@ethersproject/contracts");
 const constants_1 = require("./constants");
 const units_1 = require("@ethersproject/units");
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 function swapTokens(dex, wallet, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountIn) {
     return __awaiter(this, void 0, void 0, function* () {
         // keep this data in memory instead of in data..

@@ -1,15 +1,23 @@
-import { queues } from "./config";
-import { DEXS } from "./utils/constants";
+import { swap_Neon_To, swap_USDT_To } from "./swap";
+import { delay } from "./utils/helpers";
 
 async function main() {
-    for (let i = 0; i < DEXS.length; i++) {
-        await queues[i].add(`${DEXS[i].name}-`, {}, {attempts: 2});
-    }
+    console.log("process starting");
+    
+   for (let i = 0; i < 3; i++) {
+        await swap_Neon_To();
 
-};
+        console.log("WAITING 5 SECONDS BEFORE SWAPPING NEON BACK")
+        delay(5000);
+        
+        await swap_USDT_To();
 
-main();
+        console.log("FINSHIED SET ", i);
+        delay(1000);
+   }
+}
 // DEX..
+
 // sobal.fi
 // Moraswap.com
 // vibr.finance

@@ -1,24 +1,26 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { parseUnits } from "@ethersproject/units";
 import { NEON_TOKEN_MINT_DECIMALS } from "@neonevm/token-transfer-core";
-import { IDEX } from "../core/interfaces";
+import { IDEX, ITokens, TOKENS } from "../core/interfaces";
 
 require('dotenv').config({});
 
 export const NEON_PRIVATE = process.env.NEON_PRIVATE;
 export const PROXY_URL = `https://devnet.neonevm.org`;
 
-export const WRAPPED_NEON_TOKEN = {
+export const WRAPPED_NEON_TOKEN: ITokens = {
+  name: TOKENS.WNEON,
   address: "0x11adC2d986E334137b9ad0a0F290771F31e9517F",
   decimal: NEON_TOKEN_MINT_DECIMALS
 }
 
-export const USDT_TOKEN = {
+export const USDT_TOKEN: ITokens = {
+  name: TOKENS.USDT,
   address: "0x6eEf939FC6e2B3F440dCbB72Ea81Cd63B5a519A5",
   decimal: 6
 };
 
-const MAIN_ADDRESS = [
+export const MAIN_ADDRESS = [
   "0xDdebB445fBb4a086B33755B2C805C5732f1424E0", // MAIN.
   "0x7206F706E5e156E6c14e355eA2e448951f6c1b3A", // WALLET 4.
   "0xAc8Bf0e6843A3720683Bc91F3D4d3f001e1dda13", // WALLET 1,
