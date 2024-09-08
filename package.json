@@ -24,7 +24,9 @@
     "@ethersproject/wallet": "^5.7.0",
     "@neonevm/token-transfer-core": "^4.2.0",
     "@neonevm/token-transfer-ethers": "^4.2.0",
-    "dotenv": "^16.4.5"
+    "bullmq": "^5.12.14",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.4.1"
   },
   "devDependencies": {
     "@types/bs58": "^4.0.4",

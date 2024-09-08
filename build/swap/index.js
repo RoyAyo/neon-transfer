@@ -10,10 +10,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const providers_1 = require("@ethersproject/providers");
+const units_1 = require("@ethersproject/units");
 const wallet_1 = require("@ethersproject/wallet");
 const constants_1 = require("./utils/constants");
 const helpers_1 = require("./utils/helpers");
-const units_1 = require("@ethersproject/units");
 const provider = new providers_1.JsonRpcProvider(constants_1.PROXY_URL);
 const wallet = new wallet_1.Wallet(constants_1.NEON_PRIVATE, provider);
 (function main() {

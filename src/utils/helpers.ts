@@ -4,7 +4,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 
 import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, slippage, swapDeadline, WRAPPED_NEON_TOKEN } from "./constants";
-import { IDEX, ITokens } from "../../core/interfaces";
+import { IDEX, ITokens } from "../core/interfaces";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 
 export async function swapTokens(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, amountIn: BigNumber): Promise<any> {
@@ -94,7 +94,6 @@ export async function approveToken(dex: any, wallet: Wallet, TOKEN_ADDRESS: ITok
     const tokenContract = new Contract(TOKEN_ADDRESS.address, ERC20_ABI, wallet);
     await tokenContract.approve(dex.router, approvalAmount);
     console.log("approved token");
-    
 }
 
 export async function getAllowance(dexRouterAddress: string, wallet: Wallet, TOKEN_ADDRESS: string): Promise<BigNumber> {

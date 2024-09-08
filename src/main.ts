@@ -1,7 +1,14 @@
-// will write a scheduling tool here...
+import { queues } from "./config";
+import { DEXS } from "./utils/constants";
 
-console.log("Hello world");
+async function main() {
+    for (let i = 0; i < DEXS.length; i++) {
+        await queues[i].add(`${DEXS[i].name}-`, {}, {attempts: 2});
+    }
 
+};
+
+main();
 // DEX..
 // sobal.fi
 // Moraswap.com
