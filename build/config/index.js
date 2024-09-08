@@ -18,14 +18,19 @@ const bullmq_1 = require("bullmq");
 const constants_1 = require("../utils/constants");
 const interfaces_1 = require("../core/interfaces");
 const swap_1 = require("../swap");
-const redis = new ioredis_1.default();
+const redis = new ioredis_1.default({
+    host: 'localhost',
+    port: 6379,
+    maxRetriesPerRequest: null
+});
 exports.queues = [];
 const workers = [];
 for (let i = 0; i < constants_1.DEXS.length; i++) {
     exports.queues.push(new bullmq_1.Queue(`${constants_1.DEXS[i].name}`));
 }
-for (let i = 0; i < 3; i++) {
-    const worker = new bullmq_1.Worker(`${constants_1.DEXS[i].name}`, (job) => __awaiter(void 0, void 0, void 0, function* () {
+for (let i = 0; i < constants_1.DEXS.length; i++) {
+    const name = constants_1.DEXS[i].name;
+    const worker = new bullmq_1.Worker(name, (job) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             const token = job.data.token;
             const account = job.data.account;
@@ -42,7 +47,7 @@ for (let i = 0; i < 3; i++) {
             }
             throw error;
         }
-    }));
+    }), { connection: redis });
     workers.push(worker);
 }
 exports.default = redis;

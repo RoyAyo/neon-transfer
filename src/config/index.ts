@@ -5,7 +5,11 @@ import { IDEX, ITokens, TOKENS } from "../core/interfaces";
 import { swap, unWrapNeons } from "../swap";
 import { BigNumber } from "@ethersproject/bignumber";
 
-const redis = new Redis();
+const redis = new Redis({
+    host: 'localhost',
+    port: 6379,
+    maxRetriesPerRequest: null
+});
 
 export const queues: Queue[] = []; 
 const workers: Worker[] = [];
@@ -14,8 +18,9 @@ for(let i = 0; i < DEXS.length; i++) {
     queues.push(new Queue(`${DEXS[i].name}`));
 }
 
-for (let i = 0; i < 3; i++) {
-    const worker = new Worker(`${DEXS[i].name}`, async (job: Job) => {
+for (let i = 0; i < DEXS.length; i++) {
+    const name = DEXS[i].name;
+    const worker = new Worker(name, async (job: Job) => {
         try {
             const token: ITokens = job.data.token;
             const account: string = job.data.account;
@@ -34,7 +39,7 @@ for (let i = 0; i < 3; i++) {
             }
             throw error;
         }
-    });
+    }, { connection: redis});
 
     workers.push(worker);
 }

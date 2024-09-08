@@ -24,17 +24,22 @@ const provider = new providers_1.JsonRpcProvider(constants_1.PROXY_URL);
 const wallet = new wallet_1.Wallet(constants_1.NEON_PRIVATE, provider);
 function wrapNeons() {
     return __awaiter(this, void 0, void 0, function* () {
-        for (let i = 0; i < 10; i++) {
-            const amountToSwap = (0, units_1.parseUnits)("20", constants_1.WRAPPED_NEON_TOKEN.decimal);
+        const skip = Array(constants_1.MAIN_ADDRESS.length).fill(0);
+        for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
+            const amountToSwap = (0, units_1.parseUnits)(String(constants_1.AMOUNT_NEON_TO_START_WITH), constants_1.WRAPPED_NEON_TOKEN.decimal);
             const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i]);
-            console.log("My total NEON BALANCE is ", balance);
-            if (Number((0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)) < 20) {
-                console.log("Not enough Neon for the full process, deposit More ....");
-                process.exit();
+            console.log(`My total NEON BALANCE for address ${constants_1.MAIN_ADDRESS[i]} is ${(0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)}`);
+            if (Number((0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)) < constants_1.AMOUNT_NEON_TO_START_WITH) {
+                console.log(`Not enough Neon for the full process in ${constants_1.MAIN_ADDRESS[i]}, deposit More ....`);
+                skip[i] = 1;
+                continue;
             }
-            yield (0, helpers_1.wrapNeon)(wallet, amountToSwap);
-            console.log("WRAPPED 20 NEON FROM it");
+            else {
+                yield (0, helpers_1.wrapNeon)(wallet, amountToSwap);
+                console.log("WRAPPED 20 NEON FROM Address", constants_1.MAIN_ADDRESS[i]);
+            }
         }
+        return skip;
     });
 }
 function unWrapNeons() {
@@ -43,6 +48,8 @@ function unWrapNeons() {
             const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
             yield (0, helpers_1.unwrapNeon)(wallet, balance);
             console.log("UNWRAPPED MY REMAINING NEON ", balance);
+            console.log("process ended...");
+            process.exit();
         }
     });
 }
@@ -52,9 +59,12 @@ function swap(dex, TOKEN_FROM, TOKEN_TO, amountToSwap) {
     });
 }
 ;
-function swap_Neon_To() {
+function swap_Neon_To(skip) {
     return __awaiter(this, void 0, void 0, function* () {
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
+            if (skip[i] === 1) {
+                continue;
+            }
             const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
             let noTimes = Math.floor(Number((0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));
             noTimes = noTimes < 12 ? noTimes : 12;
@@ -72,9 +82,12 @@ function swap_Neon_To() {
     });
 }
 ;
-function swap_USDT_To(n) {
+function swap_USDT_To(skip, n) {
     return __awaiter(this, void 0, void 0, function* () {
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
+            if (skip[i] === 1) {
+                continue;
+            }
             const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.USDT_TOKEN);
             const splitBalance = balance.div(4);
             const rand = Math.floor(Math.random() * constants_1.DEXS.length); // use a random dex
