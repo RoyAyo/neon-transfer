@@ -26,19 +26,23 @@ for (let i = 0; i < constants_1.DEXS.length; i++) {
 }
 for (let i = 0; i < 3; i++) {
     const worker = new bullmq_1.Worker(`${constants_1.DEXS[i].name}`, (job) => __awaiter(void 0, void 0, void 0, function* () {
-        const token = job.data.token;
-        const account = job.data.account;
-        const dex = job.data.dex;
-        const amountToSwap = job.data.amount;
-        const otherToken = token.name === interfaces_1.TOKENS.WNEON ? constants_1.USDT_TOKEN : constants_1.WRAPPED_NEON_TOKEN;
-        console.log(`SENDING ${token} FROM account ${account}`);
-        const rcpt = yield (0, swap_1.swap)(dex, token, otherToken, amountToSwap);
-        console.log(`${rcpt.transactionHash}: Swap successful `);
+        try {
+            const token = job.data.token;
+            const account = job.data.account;
+            const dex = job.data.dex;
+            const amountToSwap = job.data.amount;
+            const otherToken = token.name === interfaces_1.TOKENS.WNEON ? constants_1.USDT_TOKEN : constants_1.WRAPPED_NEON_TOKEN;
+            console.log(`SENDING ${token} FROM account ${account}...amount: ${amountToSwap}`);
+            const rcpt = yield (0, swap_1.swap)(dex, token, otherToken, amountToSwap);
+            console.log(`${rcpt.transactionHash}: Swap successful...`);
+        }
+        catch (error) {
+            if (job.data.done) {
+                yield (0, swap_1.unWrapNeons)();
+            }
+            throw error;
+        }
     }));
     workers.push(worker);
-}
-for (let i = 0; i < 3; i++) {
-    workers[i].on('completed', (job) => {
-    });
 }
 exports.default = redis;

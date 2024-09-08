@@ -14,13 +14,14 @@ const helpers_1 = require("./utils/helpers");
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         console.log("process starting");
+        yield (0, swap_1.wrapNeons)();
         for (let i = 0; i < 3; i++) {
             yield (0, swap_1.swap_Neon_To)();
             console.log("WAITING 5 SECONDS BEFORE SWAPPING NEON BACK");
             (0, helpers_1.delay)(5000);
-            yield (0, swap_1.swap_USDT_To)();
+            yield (0, swap_1.swap_USDT_To)(i);
             console.log("FINSHIED SET ", i);
-            (0, helpers_1.delay)(1000);
+            (0, helpers_1.delay)(10000);
         }
     });
 }

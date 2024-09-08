@@ -1,10 +1,8 @@
 import Redis from "ioredis";
 import { Job, Queue, Worker } from "bullmq";
 import { DEXS, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
-import { parseUnits } from "@ethersproject/units";
 import { IDEX, ITokens, TOKENS } from "../core/interfaces";
-import { swapTokens } from "../utils/helpers";
-import { swap } from "../swap";
+import { swap, unWrapNeons } from "../swap";
 import { BigNumber } from "@ethersproject/bignumber";
 
 const redis = new Redis();
@@ -18,25 +16,27 @@ for(let i = 0; i < DEXS.length; i++) {
 
 for (let i = 0; i < 3; i++) {
     const worker = new Worker(`${DEXS[i].name}`, async (job: Job) => {
-        const token: ITokens = job.data.token;
-        const account: string = job.data.account;
-        const dex: IDEX = job.data.dex;
-        const amountToSwap: BigNumber = job.data.amount;
+        try {
+            const token: ITokens = job.data.token;
+            const account: string = job.data.account;
+            const dex: IDEX = job.data.dex;
+            const amountToSwap: BigNumber = job.data.amount;
 
-        const otherToken = token.name === TOKENS.WNEON ? USDT_TOKEN : WRAPPED_NEON_TOKEN;        
-        console.log(`SENDING ${token} FROM account ${account}`);
+            const otherToken = token.name === TOKENS.WNEON ? USDT_TOKEN : WRAPPED_NEON_TOKEN;        
+            console.log(`SENDING ${token} FROM account ${account}...amount: ${amountToSwap}`);
 
-        const rcpt = await swap(dex, token, otherToken, amountToSwap);
+            const rcpt = await swap(dex, token, otherToken, amountToSwap);
 
-        console.log(`${rcpt.transactionHash}: Swap successful `);
+            console.log(`${rcpt.transactionHash}: Swap successful...`);
+        } catch (error) {
+            if(job.data.done) {
+                await unWrapNeons();
+            }
+            throw error;
+        }
     });
+
     workers.push(worker);
-}
-
-for(let i = 0; i < 3; i++) {
-    workers[i].on('completed', (job: Job) => {
-
-    });
 }
 
 export default redis;
