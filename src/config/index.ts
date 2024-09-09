@@ -1,12 +1,12 @@
 import Redis from "ioredis";
 import { Job, Queue, Worker } from "bullmq";
-import { DEXS, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
+import { MAIN_ADDRESS, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
 import { IDEX, ITokens, TOKENS } from "../core/interfaces";
 import { swap, unWrapNeons } from "../swap";
-import { BigNumber } from "@ethersproject/bignumber";
 import { formatUnits, parseUnits } from "@ethersproject/units";
-import { unwrapNeon } from "../utils/helpers";
 import { main } from "../main";
+import winston, { Logger } from "winston";
+
 
 const redis = new Redis({
     host: 'localhost',
@@ -14,14 +14,32 @@ const redis = new Redis({
     maxRetriesPerRequest: null
 });
 
+export const loggers: Logger[] = [];
 export const queues: Queue[] = []; 
 const workers: Worker[] = [];
 
-for(let i = 0; i < DEXS.length; i++) {
+for(let i = 0; i < MAIN_ADDRESS.length; i++) {
     queues.push(new Queue(`tdt${i}`));
 }
 
-for (let i = 0; i < DEXS.length; i++) {
+for(let i = 0; i < MAIN_ADDRESS.length; i++) {
+    loggers.push(winston.createLogger({
+        format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.printf(({ timestamp, message }) => {
+              return `${timestamp}: ${message}`;
+            }),
+            winston.format.json(),
+          ),
+          transports: [
+            new winston.transports.File({
+              filename: `${MAIN_ADDRESS[i]}.addresses.log`,
+            }),
+          ],
+    }));
+}
+
+for (let i = 0; i < MAIN_ADDRESS.length; i++) {
     const name = `tdt${i}`;
     const worker = new Worker(name, async (job: Job) => {
         const token: ITokens = job.data.token;
@@ -61,10 +79,9 @@ for (let i = 0; i < workers.length; i++) {
 
         if(count >= 2) {
             await unWrapNeons(job.data.account);
-            console.log('job finished')
         } else {
             if(job.data.i === 6) {
-                console.log("starting a new job")
+                console.log("starting a new job");
                 await main(count + 1);
             }
         }
