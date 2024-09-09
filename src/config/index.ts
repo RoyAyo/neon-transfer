@@ -1,9 +1,9 @@
 import Redis from "ioredis";
 import { Job, Queue, Worker } from "bullmq";
-import { MAIN_ADDRESS, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
+import { MAIN_ADDRESS, NEON_MOVED_PER_SET, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
 import { IDEX, ITokens, TOKENS } from "../core/interfaces";
 import { swap, unWrapNeons } from "../swap";
-import { formatUnits, parseUnits } from "@ethersproject/units";
+import { parseUnits } from "@ethersproject/units";
 import { main } from "../main";
 import winston, { Logger } from "winston";
 
@@ -33,8 +33,13 @@ for(let i = 0; i < MAIN_ADDRESS.length; i++) {
           ),
           transports: [
             new winston.transports.File({
-              filename: `${MAIN_ADDRESS[i]}.addresses.log`,
+              filename: `logs/info/${MAIN_ADDRESS[i]}.addresses.log`,
+              level: 'info'
             }),
+            new winston.transports.File({
+                filename: `logs/errors/${MAIN_ADDRESS[i]}.errors.log`,
+                level: 'error'
+              }),
           ],
     }));
 }
@@ -46,6 +51,7 @@ for (let i = 0; i < MAIN_ADDRESS.length; i++) {
         const account: string = job.data.account;
         const dex: IDEX = job.data.dex;
         const amount = job.data.amount;
+        const accIndex = job.data.accountIndex;
         const nonce = job.data.nonce;
 
         if(!account) {
@@ -57,12 +63,14 @@ for (let i = 0; i < MAIN_ADDRESS.length; i++) {
             const decimal = token.name === TOKENS.WNEON ? WRAPPED_NEON_TOKEN.decimal : USDT_TOKEN.decimal;  
             const amountToSwap = parseUnits(String(amount), decimal);
 
-            const rcpt = await swap(dex, token, otherToken, account, amountToSwap, nonce);
+            console.log('transaction starting');
+            // const rcpt = await swap(dex, token, otherToken, account, amountToSwap, nonce);
 
-            return rcpt;
+            loggers[accIndex].info(job.data);
+            // loggers[accIndex].info(`hash: ${rcpt.transactionHash} -- amount: $${amount} -- gasFee:`);
 
         } catch (error) {
-            console.error(error);
+            loggers[accIndex].error(error); // you want to retry this
             throw error;
         }
     }, { connection: redis, removeOnFail: {
@@ -73,16 +81,15 @@ for (let i = 0; i < MAIN_ADDRESS.length; i++) {
 }
 
 for (let i = 0; i < workers.length; i++) {
-    workers[i].on('completed', async (job: Job, result: any) => {
-        const count = result.count;
-        console.log('job completed, ', job.data);
-
-        if(count >= 2) {
+    workers[i].on('completed', async (job: Job) => {
+        const totalJobsPerSet = NEON_MOVED_PER_SET + 1;
+        const count = job.data.count % totalJobsPerSet;
+        if(job.data.count >= (totalJobsPerSet * 3)) {
             await unWrapNeons(job.data.account);
         } else {
-            if(job.data.i === 6) {
-                console.log("starting a new job");
-                await main(count + 1);
+            if(count === 0) {
+                console.log("OLD PROCESS COMPLETED STARTING NEW");
+                await main(job.data.count + 1);
             }
         }
     })

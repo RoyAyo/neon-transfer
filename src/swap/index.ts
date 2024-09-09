@@ -2,7 +2,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 import { Wallet } from "@ethersproject/wallet";
 
-import { AMOUNT_NEON_TO_START_WITH, DEXS, MAIN_ADDRESS, NEON_PRIVATE, PROXY_URL, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
+import { AMOUNT_NEON_TO_START_WITH, DEXS, MAIN_ADDRESS, NEON_MOVED_PER_SET, NEON_PRIVATE, PROXY_URL, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
 import {  getBalance, swapTokens, unwrapNeon, wrapNeon } from "../utils/helpers";
 import { IDEX, ITokens } from "../core/interfaces";
 import { BigNumber } from "@ethersproject/bignumber";
@@ -29,7 +29,7 @@ export async function wrapNeons(): Promise<number[]> {
 }
 
 export async function unWrapNeons(address: string) {
-        const balance = await getBalance(provider, address, WRAPPED_NEON_TOKEN);        
+        const balance = await getBalance(provider, address, WRAPPED_NEON_TOKEN);  
         await unwrapNeon(wallet, address, balance);
         console.log("UNWRAPPED MY REMAINING NEON ", balance);
         console.log("process ended...");
@@ -39,49 +39,55 @@ export async function swap(dex: IDEX, TOKEN_FROM: ITokens, TOKEN_TO: ITokens, ad
     return swapTokens(DEXS[0], wallet, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce);
 };
 
-export async function swap_Neon_To(skip: number[], n: number = 0) {
-    const txcount = await wallet.getTransactionCount();
-    let nonce = txcount;
+export async function getTransactionCounts(): Promise<number[]> {
+    const txCounts = [];
+    for(let i = 0; i < MAIN_ADDRESS.length; i++) {
+        const nonce = await provider.getTransactionCount(MAIN_ADDRESS[i]);
+        txCounts.push(nonce);
+    }
+    return txCounts;
+}
 
+export async function swap_Neon_To(nonce: number[], skip: number[], n: number = 1) {
     for (let i = 0; i < MAIN_ADDRESS.length; i++) {
         if(skip[i] === 1) {
             continue;
         }
+
         const balance = await getBalance(provider, MAIN_ADDRESS[i], WRAPPED_NEON_TOKEN);
         let noTimes = Math.floor(Number(formatUnits(balance, WRAPPED_NEON_TOKEN.decimal)));
-        noTimes = noTimes < 6 ? noTimes : 6;
+        noTimes = noTimes < NEON_MOVED_PER_SET ? noTimes : NEON_MOVED_PER_SET;
+        
         for(let j = 0; j < noTimes; j++) {
             const rand = Math.floor(Math.random() * DEXS.length); // use a random dex
-            nonce = (n + 1) * (j + txcount) + ( n > 0 ? 1 : 0)
-            await queues[rand].add(`${MAIN_ADDRESS[i]}`, {
+            await queues[i].add(`${MAIN_ADDRESS[i]}-neon-job`, {
                 token: WRAPPED_NEON_TOKEN,
                 account: MAIN_ADDRESS[i],
                 dex: DEXS[rand],
                 amount: 1,
-                count: n,
-                i: j,
-                nonce,
+                count: n + j,
+                accountIndex: i,
+                nonce: nonce[i] + j,
             });
         }
     }
-    return nonce;
 };
 
-export async function swap_USDT_To(skip: number[], nonce: number = 0, n: number = 0) {
+export async function swap_USDT_To(nonce: number[], skip: number[], n: number = 1) {
         for (let i = 0; i < MAIN_ADDRESS.length; i++) {
             if(skip[i] === 1) {
                 continue;
             }
             const balance = await getBalance(provider, MAIN_ADDRESS[i], USDT_TOKEN);
             const rand = Math.floor(Math.random() * DEXS.length); // use a random dex
-            await queues[rand].add(`${MAIN_ADDRESS[i]}`, {
+            await queues[i].add(`${MAIN_ADDRESS[i]}-usdt-job`, {
                 token: USDT_TOKEN,
                 account: MAIN_ADDRESS[i],
                 dex: DEXS[rand],
                 amount: formatUnits(balance, USDT_TOKEN.decimal),
-                count: n,
-                i,
-                nonce: nonce + 1,
+                count: n + NEON_MOVED_PER_SET,
+                accountIndex: i,
+                nonce: nonce[i] + NEON_MOVED_PER_SET + 1,
             });
     }
 };
