@@ -21,32 +21,36 @@ const bignumber_1 = require("@ethersproject/bignumber");
 const contracts_1 = require("@ethersproject/contracts");
 const constants_1 = require("./constants");
 const units_1 = require("@ethersproject/units");
+const config_1 = require("../config");
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 function swapTokens(wallet_1, dex_1, TOKEN_ADDRESS_FROM_1, TOKEN_ADDRESS_TO_1, address_1, amountIn_1) {
-    return __awaiter(this, arguments, void 0, function* (wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, address, amountIn, n = 0) {
-        // keep this data in memory instead of in data..
-        const allowance = yield getAllowance(wallet, dex.router, TOKEN_ADDRESS_FROM.address);
-        if (allowance.lt(amountIn)) {
-            console.error("INSUFFICIENT AMOUNT ALLOWED");
-            yield approveToken(wallet, dex, TOKEN_ADDRESS_FROM);
-            console.log("amount approved");
-        }
+    return __awaiter(this, arguments, void 0, function* (wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, address, amountIn, nonce = 0, accIndex = 0, count = 0) {
         const amountOutMinInTokenFrom = amountIn.mul(constants_1.slippage).div(100);
         const amountOutMinInTokenTo = yield checkPrice(wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountOutMinInTokenFrom);
         const path = [TOKEN_ADDRESS_FROM.address, TOKEN_ADDRESS_TO.address];
         const router = new contracts_1.Contract(dex.router, dex.abi, wallet);
         try {
-            console.log('transaction starting...');
-            const tx = yield router.swapExactTokensForTokens(amountIn, amountOutMinInTokenTo, path, address, constants_1.swapDeadline);
-            const receipt = yield tx.wait();
-            console.log(`swap executed! successfully, ${receipt.transactionHash}`);
-            return receipt;
+            const gasPrice = (yield config_1.provider.getGasPrice()); //.mul(BigNumber.from(120)).div(100);
+            console.log(`Transaction STARTED... Address: ${address}, Nonce: ${nonce} From: ${TOKEN_ADDRESS_FROM.name}`);
+            const tx = yield router.swapExactTokensForTokens(amountIn, amountOutMinInTokenTo, path, address, constants_1.swapDeadline, {
+                nonce,
+                gasLimit: 1000000,
+                gasPrice,
+            });
+            tx.wait().then((receipt) => {
+                console.log(`swap successful: ${receipt.transactionHash}`);
+                config_1.events[accIndex].emit('neon_complete', nonce, count);
+                config_1.loggers[accIndex].info(`swap successful: ${receipt.transactionHash}`);
+            }).catch((error) => {
+                config_1.events[accIndex].emit('job_failed');
+                config_1.loggers[accIndex].error(`Transaction with nonce ${nonce} failed:`, error);
+            });
         }
         catch (error) {
             console.error(`Error executing trade on ${dex.name}:`, error);
-            return null;
+            throw Error;
         }
     });
 }
@@ -77,12 +81,11 @@ function checkPrice(wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountIn)
         }
     });
 }
-function wrapNeon(provider, wallet, address, amountToWrap) {
+function wrapNeon(wallet, amountToWrap) {
     return __awaiter(this, void 0, void 0, function* () {
-        const wrapContract = new contracts_1.Contract(address, constants_1.ERC20_ABI, wallet);
-        // const gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(120)).div(100);
+        const wrapContract = new contracts_1.Contract(constants_1.WRAPPED_NEON_TOKEN.address, constants_1.ERC20_ABI, wallet);
         try {
-            console.log("starting transaction...");
+            console.log("Wrapping Neon ...");
             const tx = yield wrapContract.deposit({
                 value: amountToWrap
             });
@@ -94,12 +97,12 @@ function wrapNeon(provider, wallet, address, amountToWrap) {
         }
     });
 }
-function unwrapNeon(provider, wallet, address, amountToUnwrap, nonce) {
+function unwrapNeon(wallet, amountToUnwrap, nonce) {
     return __awaiter(this, void 0, void 0, function* () {
-        const wrapContract = new contracts_1.Contract(address, constants_1.ERC20_ABI, wallet);
+        const wrapContract = new contracts_1.Contract(constants_1.WRAPPED_NEON_TOKEN.address, constants_1.ERC20_ABI, wallet);
         // const gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(2000)).div(100);
         try {
-            console.log("starting transaction...");
+            console.log("Unwrapping Neon...");
             const tx = yield wrapContract.withdraw(amountToUnwrap);
             yield tx.wait();
             console.log(`Unwrapped NEON successfully: ${tx.hash}`);
@@ -114,7 +117,6 @@ function approveToken(wallet, dex, TOKEN_ADDRESS) {
         const approvalAmount = (0, units_1.parseUnits)(constants_1.FIXED_TOKENS_TO_APPROVE, TOKEN_ADDRESS.decimal);
         const tokenContract = new contracts_1.Contract(TOKEN_ADDRESS.address, constants_1.ERC20_ABI, wallet);
         yield tokenContract.approve(dex.router, approvalAmount);
-        console.log("approved token");
     });
 }
 function getAllowance(wallet, dexRouterAddress, TOKEN_ADDRESS) {

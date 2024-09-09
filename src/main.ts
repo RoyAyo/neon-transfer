@@ -1,25 +1,29 @@
-import { parseUnits } from "@ethersproject/units";
-import { getTransactionCounts, swap, swapNEON, swapUSDT, unWrapNeons, wrapNeons } from "./swap";
-import { USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./utils/constants";
-import { MAIN_ADDRESS } from "./config";
+import { ensureAllowance, getTransactionCounts, swap, swapNEON, wrapNeons } from "./swap";
+import { delay } from "./utils/helpers";
 
 export async function main(n: number = 1) {
+     
      const nonce = await getTransactionCounts();
-     console.log(nonce);
 
-     await swapNEON(nonce, n);
-
-     await swapUSDT(nonce, n);
+     // await swapNEON(nonce, n);
 }
-main();
 
-export async function test() {
-
-     const nonce = await getTransactionCounts();
-     console.log(nonce);
-
+export async function start() {
+     // WRAP NEONS
      // await wrapNeons();
-     // await unWrapNeons(MAIN_ADDRESS[0], 0);
+
+     // console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
+     // await ensureAllowance();
+     // await delay(20000); //adding delays to ensure the transaction nonce is updated...
+     // console.log("...DONE...");
+     
+     
+     await main();
 }
 
-// test();
+start();
+
+process.on('unhandledRejection', (reason, promise) => {
+     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+     process.exit();
+});

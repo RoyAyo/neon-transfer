@@ -15,6 +15,7 @@ exports.swap = swap;
 exports.getTransactionCounts = getTransactionCounts;
 exports.swapNEON = swapNEON;
 exports.swapUSDT = swapUSDT;
+exports.ensureAllowance = ensureAllowance;
 const units_1 = require("@ethersproject/units");
 const config_1 = require("../config");
 const constants_1 = require("../utils/constants");
@@ -30,7 +31,7 @@ function wrapNeons() {
                 continue;
             }
             else {
-                yield (0, helpers_1.wrapNeon)(config_1.provider, config_1.wallets[i], config_1.MAIN_ADDRESS[i], amountToSwap);
+                yield (0, helpers_1.wrapNeon)(config_1.wallets[i], amountToSwap);
             }
         }
     });
@@ -40,15 +41,14 @@ function unWrapNeons(address, accIndex) {
         const balance = yield (0, helpers_1.getBalance)(config_1.provider, address, constants_1.WRAPPED_NEON_TOKEN);
         console.log(balance);
         if (balance.gt(0)) {
-            yield (0, helpers_1.unwrapNeon)(config_1.provider, config_1.wallets[accIndex], address, balance);
+            yield (0, helpers_1.unwrapNeon)(config_1.wallets[accIndex], balance);
             console.log("UNWRAPPED MY REMAINING NEON ", balance);
-            console.log("process ended...");
         }
     });
 }
-function swap(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce) {
+function swap(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce, accIndex, count) {
     return __awaiter(this, void 0, void 0, function* () {
-        return (0, helpers_1.swapTokens)(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce);
+        yield (0, helpers_1.swapTokens)(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce, accIndex, count);
     });
 }
 ;
@@ -56,7 +56,7 @@ function getTransactionCounts() {
     return __awaiter(this, void 0, void 0, function* () {
         const txCounts = [];
         for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
-            const nonce = yield config_1.provider.getTransactionCount(config_1.MAIN_ADDRESS[i], "pending");
+            const nonce = yield config_1.provider.getTransactionCount(config_1.MAIN_ADDRESS[i], 'latest');
             const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
             txCounts.push({
                 nonce,
@@ -88,22 +88,44 @@ function swapNEON(account_1) {
     });
 }
 ;
-function swapUSDT(account_1) {
-    return __awaiter(this, arguments, void 0, function* (account, n = 1) {
+function swapUSDT(nonce_1) {
+    return __awaiter(this, arguments, void 0, function* (nonce, n = 1) {
         for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
-            if (account[i].balance.lte(0)) {
-                continue;
-            }
             const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[i], constants_1.USDT_TOKEN);
+            if (balance.lte(0)) {
+                console.log("USDT TOO SMALL FOR TRANSFER");
+                throw new Error("USDT TOO SMALL FOR TRANSFER");
+            }
+            console.log("MOVING USDT WITH BALANCE ", (0, units_1.formatUnits)(balance, 6), " back");
             yield config_1.queues[i].add(`${config_1.MAIN_ADDRESS[i]}-usdt-job`, {
                 token: constants_1.USDT_TOKEN,
                 account: config_1.MAIN_ADDRESS[i],
                 amount: (0, units_1.formatUnits)(balance, constants_1.USDT_TOKEN.decimal),
-                count: n + constants_1.NEON_MOVED_PER_SET,
+                count: n,
                 accountIndex: i,
-                nonce: account[i].nonce + constants_1.NEON_MOVED_PER_SET,
+                nonce: nonce,
             });
         }
     });
 }
 ;
+function ensureAllowance() {
+    return __awaiter(this, void 0, void 0, function* () {
+        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
+            const allowance_NEON = yield (0, helpers_1.getAllowance)(config_1.wallets[i], constants_1.DEXS[0].router, constants_1.WRAPPED_NEON_TOKEN.address);
+            const allowance_USDT = yield (0, helpers_1.getAllowance)(config_1.wallets[i], constants_1.DEXS[0].router, constants_1.USDT_TOKEN.address);
+            const minAmount_Neon = (0, units_1.parseUnits)("100", constants_1.WRAPPED_NEON_TOKEN.decimal);
+            const minAmount_USDT = (0, units_1.parseUnits)("100", constants_1.USDT_TOKEN.decimal);
+            if (allowance_NEON.lt(minAmount_Neon)) {
+                console.error("INSUFFICIENT AMOUNT OF NEON ALLOWED FOR ADDRESS ", config_1.MAIN_ADDRESS[i]);
+                yield (0, helpers_1.approveToken)(config_1.wallets[i], constants_1.DEXS[0], constants_1.WRAPPED_NEON_TOKEN);
+                console.log(`APPROVED MORE TOKENS`);
+            }
+            if (allowance_USDT.lt(minAmount_USDT)) {
+                console.error("INSUFFICIENT AMOUNT OF USDT ALLOWED FOR ADDRESS ", config_1.MAIN_ADDRESS[i]);
+                yield (0, helpers_1.approveToken)(config_1.wallets[i], constants_1.DEXS[0], constants_1.USDT_TOKEN);
+                console.log(`APPROVED MORE TOKENS`);
+            }
+        }
+    });
+}

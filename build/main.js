@@ -10,23 +10,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.main = main;
-exports.test = test;
+exports.start = start;
 const swap_1 = require("./swap");
 function main() {
     return __awaiter(this, arguments, void 0, function* (n = 1) {
         const nonce = yield (0, swap_1.getTransactionCounts)();
-        console.log(nonce);
-        yield (0, swap_1.swapNEON)(nonce, n);
-        yield (0, swap_1.swapUSDT)(nonce, n);
+        // await swapNEON(nonce, n);
     });
 }
-main();
-function test() {
+function start() {
     return __awaiter(this, void 0, void 0, function* () {
-        const nonce = yield (0, swap_1.getTransactionCounts)();
-        console.log(nonce);
+        // WRAP NEONS
         // await wrapNeons();
-        // await unWrapNeons(MAIN_ADDRESS[0], 0);
+        // console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
+        // await ensureAllowance();
+        // await delay(20000); //adding delays to ensure the transaction nonce is updated...
+        // console.log("...DONE...");
+        yield main();
     });
 }
-// test();
+start();
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit();
+});
