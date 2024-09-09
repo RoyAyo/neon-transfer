@@ -1,25 +1,25 @@
 import { parseUnits } from "@ethersproject/units";
-import { getTransactionCounts, swap, swap_Neon_To, swap_USDT_To, unWrapNeons, wrapNeons } from "./swap";
-import { DEXS, MAIN_ADDRESS, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./utils/constants";
-import { delay, swapTokens } from "./utils/helpers";
+import { getTransactionCounts, swap, swapNEON, swapUSDT, unWrapNeons, wrapNeons } from "./swap";
+import { USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./utils/constants";
+import { MAIN_ADDRESS } from "./config";
 
 export async function main(n: number = 1) {
-//     console.log("process starting");
+     const nonce = await getTransactionCounts();
+     console.log(nonce);
 
-     // const skip = await wrapNeons();
+     await swapNEON(nonce, n);
 
-     // const amount = parseUnits("2", 18);
-     // await swap(DEXS[0], WRAPPED_NEON_TOKEN, USDT_TOKEN, MAIN_ADDRESS[0], amount);
+     await swapUSDT(nonce, n);
+}
+main();
+
+export async function test() {
 
      const nonce = await getTransactionCounts();
+     console.log(nonce);
 
-     await swap_Neon_To(nonce, n);
-
-     await swap_USDT_To(nonce, n);
+     // await wrapNeons();
+     // await unWrapNeons(MAIN_ADDRESS[0], 0);
 }
 
-main();
-// sobal.fi
-// Moraswap.com
-// vibr.finance
-// icecreamswap.com
+// test();

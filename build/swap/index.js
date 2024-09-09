@@ -13,55 +13,51 @@ exports.wrapNeons = wrapNeons;
 exports.unWrapNeons = unWrapNeons;
 exports.swap = swap;
 exports.getTransactionCounts = getTransactionCounts;
-exports.swap_Neon_To = swap_Neon_To;
-exports.swap_USDT_To = swap_USDT_To;
-const providers_1 = require("@ethersproject/providers");
+exports.swapNEON = swapNEON;
+exports.swapUSDT = swapUSDT;
 const units_1 = require("@ethersproject/units");
-const wallet_1 = require("@ethersproject/wallet");
+const config_1 = require("../config");
 const constants_1 = require("../utils/constants");
 const helpers_1 = require("../utils/helpers");
-const config_1 = require("../config");
-const provider = new providers_1.JsonRpcProvider(constants_1.PROXY_URL);
-const wallet = new wallet_1.Wallet(constants_1.NEON_PRIVATE, provider);
 function wrapNeons() {
     return __awaiter(this, void 0, void 0, function* () {
-        const skip = Array(constants_1.MAIN_ADDRESS.length).fill(0);
-        for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
+        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
             const amountToSwap = (0, units_1.parseUnits)(String(constants_1.AMOUNT_NEON_TO_START_WITH), constants_1.WRAPPED_NEON_TOKEN.decimal);
-            const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i]);
-            console.log(`My total NEON BALANCE for address ${constants_1.MAIN_ADDRESS[i]} is ${(0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)}`);
+            const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[i]);
+            console.log(`My total NEON BALANCE for address ${config_1.MAIN_ADDRESS[i]} is ${(0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)}`);
             if (Number((0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)) < constants_1.AMOUNT_NEON_TO_START_WITH) {
-                console.log(`Not enough Neon for the full process in ${constants_1.MAIN_ADDRESS[i]}, deposit More ....`);
-                skip[i] = 1;
+                console.log(`Not enough Neon for the full process in ${config_1.MAIN_ADDRESS[i]}, deposit More ....`);
                 continue;
             }
             else {
-                yield (0, helpers_1.wrapNeon)(wallet, constants_1.MAIN_ADDRESS[i], amountToSwap);
+                yield (0, helpers_1.wrapNeon)(config_1.provider, config_1.wallets[i], config_1.MAIN_ADDRESS[i], amountToSwap);
             }
         }
-        return skip;
     });
 }
-function unWrapNeons(address) {
+function unWrapNeons(address, accIndex) {
     return __awaiter(this, void 0, void 0, function* () {
-        const balance = yield (0, helpers_1.getBalance)(provider, address, constants_1.WRAPPED_NEON_TOKEN);
-        yield (0, helpers_1.unwrapNeon)(wallet, address, balance);
-        console.log("UNWRAPPED MY REMAINING NEON ", balance);
-        console.log("process ended...");
+        const balance = yield (0, helpers_1.getBalance)(config_1.provider, address, constants_1.WRAPPED_NEON_TOKEN);
+        console.log(balance);
+        if (balance.gt(0)) {
+            yield (0, helpers_1.unwrapNeon)(config_1.provider, config_1.wallets[accIndex], address, balance);
+            console.log("UNWRAPPED MY REMAINING NEON ", balance);
+            console.log("process ended...");
+        }
     });
 }
-function swap(dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce) {
+function swap(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce) {
     return __awaiter(this, void 0, void 0, function* () {
-        return (0, helpers_1.swapTokens)(constants_1.DEXS[0], wallet, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce);
+        return (0, helpers_1.swapTokens)(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce);
     });
 }
 ;
 function getTransactionCounts() {
     return __awaiter(this, void 0, void 0, function* () {
         const txCounts = [];
-        for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
-            const nonce = yield provider.getTransactionCount(constants_1.MAIN_ADDRESS[i]);
-            const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
+        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
+            const nonce = yield config_1.provider.getTransactionCount(config_1.MAIN_ADDRESS[i], "pending");
+            const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
             txCounts.push({
                 nonce,
                 balance
@@ -70,48 +66,42 @@ function getTransactionCounts() {
         return txCounts;
     });
 }
-function swap_Neon_To(account_1, skip_1) {
-    return __awaiter(this, arguments, void 0, function* (account, skip, n = 1) {
-        for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
-            if (skip[i] === 1 || account[i].balance.lte(0)) {
+function swapNEON(account_1) {
+    return __awaiter(this, arguments, void 0, function* (account, n = 1) {
+        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
+            if (account[i].balance.lte(0)) {
                 continue;
             }
             let noTimes = Math.floor(Number((0, units_1.formatUnits)(account[i].balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));
             noTimes = noTimes < constants_1.NEON_MOVED_PER_SET ? noTimes : constants_1.NEON_MOVED_PER_SET;
-            console.log(noTimes);
             for (let j = 0; j < noTimes; j++) {
-                const rand = Math.floor(Math.random() * constants_1.DEXS.length); // use a random dex
-                yield config_1.queues[i].add(`${constants_1.MAIN_ADDRESS[i]}-neon-job`, {
+                yield config_1.queues[i].add(`${config_1.MAIN_ADDRESS[i]}-neon-job`, {
                     token: constants_1.WRAPPED_NEON_TOKEN,
-                    account: constants_1.MAIN_ADDRESS[i],
-                    dex: constants_1.DEXS[rand],
+                    account: config_1.MAIN_ADDRESS[i],
                     amount: 1,
                     count: n + j,
                     accountIndex: i,
                     nonce: account[i].nonce + j,
                 });
-                console.log('queue added');
             }
         }
     });
 }
 ;
-function swap_USDT_To(account_1, skip_1) {
-    return __awaiter(this, arguments, void 0, function* (account, skip, n = 1) {
-        for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
-            if (skip[i] === 1 || account[i].balance.lte(0)) {
+function swapUSDT(account_1) {
+    return __awaiter(this, arguments, void 0, function* (account, n = 1) {
+        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
+            if (account[i].balance.lte(0)) {
                 continue;
             }
-            const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.USDT_TOKEN);
-            const rand = Math.floor(Math.random() * constants_1.DEXS.length); // use a random dex
-            yield config_1.queues[i].add(`${constants_1.MAIN_ADDRESS[i]}-usdt-job`, {
+            const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[i], constants_1.USDT_TOKEN);
+            yield config_1.queues[i].add(`${config_1.MAIN_ADDRESS[i]}-usdt-job`, {
                 token: constants_1.USDT_TOKEN,
-                account: constants_1.MAIN_ADDRESS[i],
-                dex: constants_1.DEXS[rand],
+                account: config_1.MAIN_ADDRESS[i],
                 amount: (0, units_1.formatUnits)(balance, constants_1.USDT_TOKEN.decimal),
                 count: n + constants_1.NEON_MOVED_PER_SET,
                 accountIndex: i,
-                nonce: account[i].nonce + constants_1.NEON_MOVED_PER_SET + 1,
+                nonce: account[i].nonce + constants_1.NEON_MOVED_PER_SET,
             });
         }
     });

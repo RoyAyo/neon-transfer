@@ -12,18 +12,18 @@ export function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-export async function swapTokens(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, address: string, amountIn: BigNumber, n: number = 0): Promise<any> {
+export async function swapTokens(wallet: Wallet, dex: IDEX, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, address: string, amountIn: BigNumber, n: number = 0): Promise<any> {
     // keep this data in memory instead of in data..
-    const allowance = await getAllowance(dex.router, wallet, TOKEN_ADDRESS_FROM.address);
+    const allowance = await getAllowance(wallet, dex.router, TOKEN_ADDRESS_FROM.address);
 
     if(allowance.lt(amountIn)) {
         console.error("INSUFFICIENT AMOUNT ALLOWED");
-        await approveToken(dex, wallet, TOKEN_ADDRESS_FROM);
+        await approveToken(wallet, dex, TOKEN_ADDRESS_FROM);
         console.log("amount approved");
     }
 
     const amountOutMinInTokenFrom: BigNumber = amountIn.mul(slippage).div(100);
-    const amountOutMinInTokenTo: BigNumber = await checkPrice(dex, wallet, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountOutMinInTokenFrom);
+    const amountOutMinInTokenTo: BigNumber = await checkPrice(wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountOutMinInTokenFrom);
 
     const path = [TOKEN_ADDRESS_FROM.address, TOKEN_ADDRESS_TO.address];
 
@@ -63,7 +63,7 @@ export async function getBalance(provider: JsonRpcProvider, address: string, con
     }
 }
 
-export async function checkPrice(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, amountIn: BigNumber) {
+export async function checkPrice(wallet: Wallet, dex: IDEX, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, amountIn: BigNumber) {
     const path = [TOKEN_ADDRESS_FROM.address, TOKEN_ADDRESS_TO.address];
     const router = new Contract(dex.router, dex.abi, wallet);
 
@@ -76,30 +76,44 @@ export async function checkPrice(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: 
     }
 }
 
-export async function wrapNeon(wallet: Wallet, address: string, amountToWrap: BigNumber): Promise<void> {
+export async function wrapNeon(provider: JsonRpcProvider, wallet: Wallet, address: string, amountToWrap: BigNumber): Promise<void> {
     const wrapContract = new Contract(address, ERC20_ABI, wallet);
-    const tx = await wrapContract.deposit({ value: amountToWrap, gasPrice: parseUnits('0.0006', 18) });
-    await tx.wait();
-
-    console.log("Wrapped NEON successfully: ", tx.hash);
+    // const gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(120)).div(100);
+    try {
+        console.log("starting transaction...")
+        const tx = await wrapContract.deposit({
+            value: amountToWrap
+        });
+        await tx.wait();
+    
+        console.log("Wrapped NEON successfully: ", tx.hash);
+    } catch (error) {
+        console.error(error);
+    }
 }
 
-export async function unwrapNeon(wallet: Wallet, address: string, amountToUnwrap: BigNumber): Promise<void> {
+export async function unwrapNeon(provider: JsonRpcProvider, wallet: Wallet, address: string, amountToUnwrap: BigNumber, nonce?: number): Promise<void> {
     const wrapContract = new Contract(address, ERC20_ABI, wallet);
-    const tx = await wrapContract.withdraw({ value: amountToUnwrap, gasPrice: parseUnits('0.0006', 18) });
-    await tx.wait();
-  
-    console.log(`Unwrapped NEON successfully: ${tx.hash}`);
+    // const gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(2000)).div(100);
+    try {
+        console.log("starting transaction...")
+        const tx = await wrapContract.withdraw(amountToUnwrap);
+        await tx.wait();
+      
+        console.log(`Unwrapped NEON successfully: ${tx.hash}`);
+    } catch (error) {
+        console.error(error);
+    }
 }
 
-export async function approveToken(dex: any, wallet: Wallet, TOKEN_ADDRESS: ITokens) {
+export async function approveToken(wallet: Wallet, dex: IDEX, TOKEN_ADDRESS: ITokens) {
     const approvalAmount =  parseUnits(FIXED_TOKENS_TO_APPROVE, TOKEN_ADDRESS.decimal);
     const tokenContract = new Contract(TOKEN_ADDRESS.address, ERC20_ABI, wallet);
     await tokenContract.approve(dex.router, approvalAmount);
     console.log("approved token");
 }
 
-export async function getAllowance(dexRouterAddress: string, wallet: Wallet, TOKEN_ADDRESS: string): Promise<BigNumber> {
+export async function getAllowance(wallet: Wallet, dexRouterAddress: string, TOKEN_ADDRESS: string): Promise<BigNumber> {
     const tokenContract = new Contract(TOKEN_ADDRESS, ERC20_ABI, wallet);
     const allowance = await tokenContract.allowance(wallet.address, dexRouterAddress);
 

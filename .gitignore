@@ -2,3 +2,4 @@ node_modules/
 logs/
 
 .env
+private_keys*.json
