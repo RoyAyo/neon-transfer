@@ -1,17 +1,17 @@
 import Redis from "ioredis";
 import { Job, Queue, Worker } from "bullmq";
-import { DEXS, NEON_MOVED_PER_SET, NO_OF_SETS, PROXY_URL, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
-import { ITokens, TOKENS } from "../core/interfaces";
-import { swap, swapUSDT, unWrapNeons } from "../swap";
-import { parseUnits } from "@ethersproject/units";
-import { main } from "../main";
-import winston, { Logger } from "winston";
-import Jsonkeys from "../../private_keys.test.json"
-import { Wallet } from "@ethersproject/wallet";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { delay, unwrapNeon } from "../utils/helpers";
+import { parseUnits } from "@ethersproject/units";
+import { Wallet } from "@ethersproject/wallet";
+import Jsonkeys from "../../private_keys.test.json"
+
+import { ITokens, TOKENS } from "../core/interfaces";
 import { EventEmitter } from "stream";
+import { swap } from "../swap";
+import { DEXS, PROXY_URL, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
+import { addEvents, } from "../utils/helpers";
 import WorkerEvent from "../utils/worker.event";
+import winston from "winston";
 
 export const provider = new JsonRpcProvider(PROXY_URL);
 const redis = new Redis({
@@ -21,7 +21,7 @@ const redis = new Redis({
 });
 const keys = Jsonkeys.keys;
 
-export const loggers: Logger[] = [];
+export const loggers: winston.Logger[] = [];
 export const queues: Queue[] = []; 
 export const wallets: Wallet[] = [];
 export const MAIN_ADDRESS: string[] = [];
@@ -29,52 +29,19 @@ export const workers: Worker[] = [];
 export const events: EventEmitter[] = [];
 export const NO_OF_KEYS = keys.length;
 
-
 for(let i = 0; i < NO_OF_KEYS; i++) {
+
+    // CONFIGURE EACH WALLET
     const wallet = new Wallet(keys[i].private_key, provider);
     MAIN_ADDRESS.push(keys[i].public_key);
     wallets.push(wallet);
-}
 
-for(let i = 0; i < NO_OF_KEYS; i++) {
-    queues.push(new Queue(`xll${i}`));
-}
-
-for(let i = 0; i < NO_OF_KEYS; i++) {
+    // CONFIGURE EVENT EMITTERS
     const event = new WorkerEvent();
-
-    event.on('neon_complete', async (nonce: number, count: number) => {
-        console.log("Neon completed", count);
-        if(count % NEON_MOVED_PER_SET === 0) {
-            console.log("SWAPPING USDT BACK");
-            await swapUSDT(nonce + 1, count);
-            event.emit('usdt_complete', count);
-        }
-    });
-
-    event.on('usdt_complete', async (count) => {
-        if(count >= NEON_MOVED_PER_SET * NO_OF_SETS) {
-            event.emit('job_complete');
-        } else {
-            console.log("BATCH COMPLETED...");
-            await main(count + 1);
-        }
-    })
-
-    event.on('job_complete', async () => {
-        console.log("Jobs Completed");
-        await unWrapNeons(MAIN_ADDRESS[i], i);
-    });
-
-    event.on('job_failed', async (nonce: number) => {
-        console.log("Jobs FAILED", nonce);
-        //think of retry.
-    });
-
+    addEvents(event, i);
     events.push(event);
-}
 
-for(let i = 0; i < NO_OF_KEYS; i++) {
+    // CONFIGURE LOGGERS
     loggers.push(winston.createLogger({
         format: winston.format.combine(
             winston.format.timestamp(),
@@ -94,11 +61,13 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
             }),
           ],
     }));
-}
 
-for (let i = 0; i < NO_OF_KEYS; i++) {
-    const name = `xll${i}`;
-    const worker = new Worker(name, async (job: Job) => {
+    const queueName = `x--${i}`;
+    // CONFIGURE QUEUES
+    queues.push(new Queue(queueName));
+
+    // CONFIGURE WORKERS FOR  QUEUE
+    const worker = new Worker(queueName, async (job: Job) => {
         const token: ITokens = job.data.token;
         const account: string = job.data.account;
         const amount = job.data.amount;
@@ -130,6 +99,7 @@ for (let i = 0; i < NO_OF_KEYS; i++) {
 }
 
 for (let i = 0; i < workers.length; i++) {
+    // FAILED EMITTERS FOR EACH EVENT
     workers[i].on('failed', async (job: Job<any, any, string> | undefined, err: Error) => {
         console.error(err);
         if (job && job.attemptsMade < 2) {
@@ -138,29 +108,6 @@ for (let i = 0; i < workers.length; i++) {
             console.log(`Job ${job?.id} has exceeded retry attempts.`);
           }
     });
-
-    // workers[i].on('completed', async (job: Job) => {
-        // const count = job.data.count % NEON_MOVED_PER_SET;
-        // if(job.data.count >= (NEON_MOVED_PER_SET * 2)) {
-        //     await unWrapNeons(job.data.account, job.data.accountIndex);
-        //     process.exit();
-        // } else {
-        //     if(count === 0 && job.data.token.name === TOKENS.WNEON) {
-        //         console.log("BATCH COMPLETED...");
-        //         try {
-        //             console.log("WAITING 2 MINUTES FOR OTHER TRANSACTIONS TO CONFIRM..")
-        //             await delay(120000);
-        //             await swapUSDT(job.data.nonce + 1, job.data.count);
-        //         } catch (error) {
-        //             console.error("Could not swap USDT: ", error);
-        //             loggers[job.data.accIndex].error(error);
-        //         }
-        //         console.log("Waiting a minute seconds for batches to be completed");
-        //         await delay(60000);
-        //         await main(job.data.count + 1);
-            // }
-    //     }
-    // })
 }
 
 export default redis;

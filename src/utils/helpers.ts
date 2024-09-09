@@ -3,11 +3,14 @@ import { Contract } from "@ethersproject/contracts";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 
-import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, slippage, swapDeadline, WRAPPED_NEON_TOKEN } from "./constants";
+import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, NEON_MOVED_PER_SET, NO_OF_SETS, slippage, swapDeadline, WRAPPED_NEON_TOKEN } from "./constants";
 import { IDEX, ITokens } from "../core/interfaces";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 import { NEON_TOKEN_DECIMALS } from "@neonevm/token-transfer-core";
-import { events, loggers, provider, workers } from "../config";
+import { events, loggers, MAIN_ADDRESS, provider, workers } from "../config";
+import { EventEmitter } from "stream";
+import { swapUSDT, unWrapNeons } from "../swap";
+import { main } from "../main";
 
 export function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -119,4 +122,34 @@ export async function getAllowance(wallet: Wallet, dexRouterAddress: string, TOK
     const allowance = await tokenContract.allowance(wallet.address, dexRouterAddress);
 
     return allowance;
+}
+
+export function addEvents(event: EventEmitter, i: number) {
+    event.on('neon_complete', async (nonce: number, count: number) => {
+        console.log("Neon completed", count);
+        if(count % NEON_MOVED_PER_SET === 0) {
+            console.log("SWAPPING USDT BACK");
+            await swapUSDT(nonce + 1, count);
+            event.emit('usdt_complete', count);
+        }
+    });
+
+    event.on('usdt_complete', async (count) => {
+        if(count >= NEON_MOVED_PER_SET * NO_OF_SETS) {
+            event.emit('job_complete');
+        } else {
+            console.log("BATCH COMPLETED...");
+            await main(count + 1);
+        }
+    })
+
+    event.on('job_complete', async () => {
+        console.log("Jobs Completed");
+        await unWrapNeons(MAIN_ADDRESS[i], i);
+    });
+
+    event.on('job_failed', async (nonce: number) => {
+        console.log("Jobs FAILED", nonce);
+        //think of retry.
+    });
 }
