@@ -86,7 +86,7 @@ export async function wrapNeon(wallet: Wallet, address: string, amountToWrap: Bi
 
 export async function unwrapNeon(wallet: Wallet, address: string, amountToUnwrap: BigNumber): Promise<void> {
     const wrapContract = new Contract(address, ERC20_ABI, wallet);
-    const tx = await wrapContract.withdraw(amountToUnwrap);
+    const tx = await wrapContract.withdraw({ value: amountToUnwrap, gasPrice: parseUnits('0.0006', 18) });
     await tx.wait();
   
     console.log(`Unwrapped NEON successfully: ${tx.hash}`);

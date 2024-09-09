@@ -61,20 +61,24 @@ function getTransactionCounts() {
         const txCounts = [];
         for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
             const nonce = yield provider.getTransactionCount(constants_1.MAIN_ADDRESS[i]);
-            txCounts.push(nonce);
+            const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
+            txCounts.push({
+                nonce,
+                balance
+            });
         }
         return txCounts;
     });
 }
-function swap_Neon_To(nonce_1, skip_1) {
-    return __awaiter(this, arguments, void 0, function* (nonce, skip, n = 1) {
+function swap_Neon_To(account_1, skip_1) {
+    return __awaiter(this, arguments, void 0, function* (account, skip, n = 1) {
         for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
-            if (skip[i] === 1) {
+            if (skip[i] === 1 || account[i].balance.lte(0)) {
                 continue;
             }
-            const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
-            let noTimes = Math.floor(Number((0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));
+            let noTimes = Math.floor(Number((0, units_1.formatUnits)(account[i].balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));
             noTimes = noTimes < constants_1.NEON_MOVED_PER_SET ? noTimes : constants_1.NEON_MOVED_PER_SET;
+            console.log(noTimes);
             for (let j = 0; j < noTimes; j++) {
                 const rand = Math.floor(Math.random() * constants_1.DEXS.length); // use a random dex
                 yield config_1.queues[i].add(`${constants_1.MAIN_ADDRESS[i]}-neon-job`, {
@@ -84,17 +88,18 @@ function swap_Neon_To(nonce_1, skip_1) {
                     amount: 1,
                     count: n + j,
                     accountIndex: i,
-                    nonce: nonce[i] + j,
+                    nonce: account[i].nonce + j,
                 });
+                console.log('queue added');
             }
         }
     });
 }
 ;
-function swap_USDT_To(nonce_1, skip_1) {
-    return __awaiter(this, arguments, void 0, function* (nonce, skip, n = 1) {
+function swap_USDT_To(account_1, skip_1) {
+    return __awaiter(this, arguments, void 0, function* (account, skip, n = 1) {
         for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
-            if (skip[i] === 1) {
+            if (skip[i] === 1 || account[i].balance.lte(0)) {
                 continue;
             }
             const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.USDT_TOKEN);
@@ -106,7 +111,7 @@ function swap_USDT_To(nonce_1, skip_1) {
                 amount: (0, units_1.formatUnits)(balance, constants_1.USDT_TOKEN.decimal),
                 count: n + constants_1.NEON_MOVED_PER_SET,
                 accountIndex: i,
-                nonce: nonce[i] + constants_1.NEON_MOVED_PER_SET + 1,
+                nonce: account[i].nonce + constants_1.NEON_MOVED_PER_SET + 1,
             });
         }
     });

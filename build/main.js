@@ -26,7 +26,6 @@ function main() {
             process.exit();
         }
         const nonce = yield (0, swap_1.getTransactionCounts)();
-        console.log(nonce);
         yield (0, swap_1.swap_Neon_To)(nonce, skip, n);
         yield (0, swap_1.swap_USDT_To)(nonce, skip, n);
     });

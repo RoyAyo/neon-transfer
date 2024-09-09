@@ -4,7 +4,7 @@ import { Wallet } from "@ethersproject/wallet";
 
 import { AMOUNT_NEON_TO_START_WITH, DEXS, MAIN_ADDRESS, NEON_MOVED_PER_SET, NEON_PRIVATE, PROXY_URL, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
 import {  getBalance, swapTokens, unwrapNeon, wrapNeon } from "../utils/helpers";
-import { IDEX, ITokens } from "../core/interfaces";
+import { IAccount, IDEX, ITokens } from "../core/interfaces";
 import { BigNumber } from "@ethersproject/bignumber";
 import { queues } from "../config";
 
@@ -39,24 +39,28 @@ export async function swap(dex: IDEX, TOKEN_FROM: ITokens, TOKEN_TO: ITokens, ad
     return swapTokens(DEXS[0], wallet, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce);
 };
 
-export async function getTransactionCounts(): Promise<number[]> {
+export async function getTransactionCounts(): Promise<IAccount[]> {
     const txCounts = [];
     for(let i = 0; i < MAIN_ADDRESS.length; i++) {
         const nonce = await provider.getTransactionCount(MAIN_ADDRESS[i]);
-        txCounts.push(nonce);
+        const balance = await getBalance(provider, MAIN_ADDRESS[i], WRAPPED_NEON_TOKEN);
+        txCounts.push({
+            nonce,
+            balance
+        });
     }
     return txCounts;
 }
 
-export async function swap_Neon_To(nonce: number[], skip: number[], n: number = 1) {
+export async function swap_Neon_To(account: IAccount[], n: number = 1) {
     for (let i = 0; i < MAIN_ADDRESS.length; i++) {
-        if(skip[i] === 1) {
+        if(account[i].balance.lte(0)) {
             continue;
         }
 
-        const balance = await getBalance(provider, MAIN_ADDRESS[i], WRAPPED_NEON_TOKEN);
-        let noTimes = Math.floor(Number(formatUnits(balance, WRAPPED_NEON_TOKEN.decimal)));
+        let noTimes = Math.floor(Number(formatUnits(account[i].balance, WRAPPED_NEON_TOKEN.decimal)));
         noTimes = noTimes < NEON_MOVED_PER_SET ? noTimes : NEON_MOVED_PER_SET;
+        console.log(noTimes);
         
         for(let j = 0; j < noTimes; j++) {
             const rand = Math.floor(Math.random() * DEXS.length); // use a random dex
@@ -67,15 +71,16 @@ export async function swap_Neon_To(nonce: number[], skip: number[], n: number = 
                 amount: 1,
                 count: n + j,
                 accountIndex: i,
-                nonce: nonce[i] + j,
+                nonce: account[i].nonce + j,
             });
+            console.log('queue added');
         }
     }
 };
 
-export async function swap_USDT_To(nonce: number[], skip: number[], n: number = 1) {
+export async function swap_USDT_To(account: IAccount[], n: number = 1) {
         for (let i = 0; i < MAIN_ADDRESS.length; i++) {
-            if(skip[i] === 1) {
+            if(account[i].balance.lte(0)) {
                 continue;
             }
             const balance = await getBalance(provider, MAIN_ADDRESS[i], USDT_TOKEN);
@@ -87,7 +92,7 @@ export async function swap_USDT_To(nonce: number[], skip: number[], n: number = 
                 amount: formatUnits(balance, USDT_TOKEN.decimal),
                 count: n + NEON_MOVED_PER_SET,
                 accountIndex: i,
-                nonce: nonce[i] + NEON_MOVED_PER_SET + 1,
+                nonce: account[i].nonce + NEON_MOVED_PER_SET + 1,
             });
     }
 };

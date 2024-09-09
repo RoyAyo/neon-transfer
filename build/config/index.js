@@ -17,7 +17,6 @@ const ioredis_1 = __importDefault(require("ioredis"));
 const bullmq_1 = require("bullmq");
 const constants_1 = require("../utils/constants");
 const interfaces_1 = require("../core/interfaces");
-const swap_1 = require("../swap");
 const units_1 = require("@ethersproject/units");
 const main_1 = require("../main");
 const winston_1 = __importDefault(require("winston"));
@@ -84,7 +83,9 @@ for (let i = 0; i < workers.length; i++) {
         const totalJobsPerSet = constants_1.NEON_MOVED_PER_SET + 1;
         const count = job.data.count % totalJobsPerSet;
         if (job.data.count >= (totalJobsPerSet * 3)) {
-            yield (0, swap_1.unWrapNeons)(job.data.account);
+            // await unWrapNeons(job.data.account);
+            console.log("Unwrapped now");
+            process.exit();
         }
         else {
             if (count === 0) {

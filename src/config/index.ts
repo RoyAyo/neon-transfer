@@ -85,7 +85,9 @@ for (let i = 0; i < workers.length; i++) {
         const totalJobsPerSet = NEON_MOVED_PER_SET + 1;
         const count = job.data.count % totalJobsPerSet;
         if(job.data.count >= (totalJobsPerSet * 3)) {
-            await unWrapNeons(job.data.account);
+            // await unWrapNeons(job.data.account);
+            console.log("Unwrapped now");
+            process.exit();
         } else {
             if(count === 0) {
                 console.log("OLD PROCESS COMPLETED STARTING NEW");

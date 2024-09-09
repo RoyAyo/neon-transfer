@@ -88,7 +88,7 @@ function wrapNeon(wallet, address, amountToWrap) {
 function unwrapNeon(wallet, address, amountToUnwrap) {
     return __awaiter(this, void 0, void 0, function* () {
         const wrapContract = new contracts_1.Contract(address, constants_1.ERC20_ABI, wallet);
-        const tx = yield wrapContract.withdraw(amountToUnwrap);
+        const tx = yield wrapContract.withdraw({ value: amountToUnwrap, gasPrice: (0, units_1.parseUnits)('0.0006', 18) });
         yield tx.wait();
         console.log(`Unwrapped NEON successfully: ${tx.hash}`);
     });
