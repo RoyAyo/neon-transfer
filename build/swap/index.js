@@ -35,71 +35,72 @@ function wrapNeons() {
                 continue;
             }
             else {
-                yield (0, helpers_1.wrapNeon)(wallet, amountToSwap);
-                console.log("WRAPPED 20 NEON FROM Address", constants_1.MAIN_ADDRESS[i]);
+                yield (0, helpers_1.wrapNeon)(wallet, constants_1.MAIN_ADDRESS[i], amountToSwap);
             }
         }
         return skip;
     });
 }
-function unWrapNeons() {
+function unWrapNeons(address) {
     return __awaiter(this, void 0, void 0, function* () {
-        for (let i = 0; i < 10; i++) {
-            const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
-            yield (0, helpers_1.unwrapNeon)(wallet, balance);
-            console.log("UNWRAPPED MY REMAINING NEON ", balance);
-            console.log("process ended...");
-            process.exit();
-        }
+        const balance = yield (0, helpers_1.getBalance)(provider, address, constants_1.WRAPPED_NEON_TOKEN);
+        yield (0, helpers_1.unwrapNeon)(wallet, address, balance);
+        console.log("UNWRAPPED MY REMAINING NEON ", balance);
+        console.log("process ended...");
     });
 }
-function swap(dex, TOKEN_FROM, TOKEN_TO, amountToSwap) {
+function swap(dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce) {
     return __awaiter(this, void 0, void 0, function* () {
-        return (0, helpers_1.swapTokens)(constants_1.DEXS[0], wallet, TOKEN_FROM, TOKEN_TO, amountToSwap);
+        return (0, helpers_1.swapTokens)(constants_1.DEXS[0], wallet, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce);
     });
 }
 ;
-function swap_Neon_To(skip) {
-    return __awaiter(this, void 0, void 0, function* () {
+function swap_Neon_To(skip_1) {
+    return __awaiter(this, arguments, void 0, function* (skip, n = 0) {
+        const txcount = yield wallet.getTransactionCount();
+        let nonce = txcount;
         for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
             if (skip[i] === 1) {
                 continue;
             }
             const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
             let noTimes = Math.floor(Number((0, units_1.formatUnits)(balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));
-            noTimes = noTimes < 12 ? noTimes : 12;
-            for (let i = 0; i < noTimes; i++) {
+            noTimes = noTimes < 6 ? noTimes : 6;
+            for (let j = 0; j < noTimes; j++) {
                 const rand = Math.floor(Math.random() * constants_1.DEXS.length); // use a random dex
-                yield config_1.queues[rand].add(`${constants_1.DEXS[rand].name}:-${constants_1.MAIN_ADDRESS[i]}:-${Date.now()}`, {
+                nonce = (n + 1) * (j + txcount) + (n > 0 ? 1 : 0);
+                yield config_1.queues[rand].add(`${constants_1.MAIN_ADDRESS[i]}`, {
                     token: constants_1.WRAPPED_NEON_TOKEN,
                     account: constants_1.MAIN_ADDRESS[i],
                     dex: constants_1.DEXS[rand],
-                    amount: (0, units_1.parseUnits)("1", constants_1.WRAPPED_NEON_TOKEN.decimal),
-                    done: false,
-                }, { attempts: 2 });
+                    amount: 1,
+                    count: n,
+                    i: j,
+                    nonce,
+                });
             }
         }
+        return nonce;
     });
 }
 ;
-function swap_USDT_To(skip, n) {
-    return __awaiter(this, void 0, void 0, function* () {
+function swap_USDT_To(skip_1) {
+    return __awaiter(this, arguments, void 0, function* (skip, nonce = 0, n = 0) {
         for (let i = 0; i < constants_1.MAIN_ADDRESS.length; i++) {
             if (skip[i] === 1) {
                 continue;
             }
             const balance = yield (0, helpers_1.getBalance)(provider, constants_1.MAIN_ADDRESS[i], constants_1.USDT_TOKEN);
-            const splitBalance = balance.div(4);
             const rand = Math.floor(Math.random() * constants_1.DEXS.length); // use a random dex
-            for (let j = 0; j < 3; j++) {
-                yield config_1.queues[rand].add(`${constants_1.DEXS[rand].name}:-${constants_1.MAIN_ADDRESS[i]}:-${Date.now()}`, {
-                    token: constants_1.USDT_TOKEN,
-                    account: constants_1.MAIN_ADDRESS[i],
-                    dex: constants_1.DEXS[rand],
-                    amount: splitBalance,
-                    done: j == 2 && n == 2,
-                }, { attempts: 2 });
-            }
+            yield config_1.queues[rand].add(`${constants_1.MAIN_ADDRESS[i]}`, {
+                token: constants_1.USDT_TOKEN,
+                account: constants_1.MAIN_ADDRESS[i],
+                dex: constants_1.DEXS[rand],
+                amount: (0, units_1.formatUnits)(balance, constants_1.USDT_TOKEN.decimal),
+                count: n,
+                i,
+                nonce: nonce + 1,
+            });
         }
     });
 }

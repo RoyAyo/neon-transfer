@@ -9,28 +9,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.main = main;
 const swap_1 = require("./swap");
-const constants_1 = require("./utils/constants");
-const helpers_1 = require("./utils/helpers");
 function main() {
-    return __awaiter(this, void 0, void 0, function* () {
-        console.log("process starting");
+    return __awaiter(this, arguments, void 0, function* (n = 0) {
+        //     console.log("process starting");
         const skip = yield (0, swap_1.wrapNeons)();
-        const sum = skip.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-        console.log(sum);
-        if (sum === constants_1.MAIN_ADDRESS.length) {
-            console.log("No wallet has enough balance, ending");
-            console.log("process ending...");
-            process.exit();
-        }
-        for (let i = 0; i < 3; i++) {
-            yield (0, swap_1.swap_Neon_To)(skip);
-            console.log("WAITING 5 SECONDS BEFORE SWAPPING NEON BACK");
-            (0, helpers_1.delay)(5000);
-            yield (0, swap_1.swap_USDT_To)(skip, i);
-            console.log("FINSHIED SET ", i);
-            (0, helpers_1.delay)(10000);
-        }
+        // const amount = parseUnits("2", 18);
+        // await swap(DEXS[0], WRAPPED_NEON_TOKEN, USDT_TOKEN, MAIN_ADDRESS[0], amount);
+        // const sum = skip.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+        // if(sum === MAIN_ADDRESS.length) {
+        //      console.log("No wallet has enough balance, ending");
+        //      console.log("process ending...");
+        //      process.exit();
+        // }
+        // const nonce = await swap_Neon_To(skip, n);
+        // await swap_USDT_To(skip, nonce, n);
     });
 }
 main();

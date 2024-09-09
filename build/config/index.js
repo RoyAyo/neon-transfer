@@ -18,6 +18,8 @@ const bullmq_1 = require("bullmq");
 const constants_1 = require("../utils/constants");
 const interfaces_1 = require("../core/interfaces");
 const swap_1 = require("../swap");
+const units_1 = require("@ethersproject/units");
+const main_1 = require("../main");
 const redis = new ioredis_1.default({
     host: 'localhost',
     port: 6379,
@@ -26,28 +28,49 @@ const redis = new ioredis_1.default({
 exports.queues = [];
 const workers = [];
 for (let i = 0; i < constants_1.DEXS.length; i++) {
-    exports.queues.push(new bullmq_1.Queue(`${constants_1.DEXS[i].name}`));
+    exports.queues.push(new bullmq_1.Queue(`tdt${i}`));
 }
 for (let i = 0; i < constants_1.DEXS.length; i++) {
-    const name = constants_1.DEXS[i].name;
+    const name = `tdt${i}`;
     const worker = new bullmq_1.Worker(name, (job) => __awaiter(void 0, void 0, void 0, function* () {
+        const token = job.data.token;
+        const account = job.data.account;
+        const dex = job.data.dex;
+        const amount = job.data.amount;
+        const nonce = job.data.nonce;
+        if (!account) {
+            throw new Error("Invalid account");
+        }
         try {
-            const token = job.data.token;
-            const account = job.data.account;
-            const dex = job.data.dex;
-            const amountToSwap = job.data.amount;
             const otherToken = token.name === interfaces_1.TOKENS.WNEON ? constants_1.USDT_TOKEN : constants_1.WRAPPED_NEON_TOKEN;
-            console.log(`SENDING ${token} FROM account ${account}...amount: ${amountToSwap}`);
-            const rcpt = yield (0, swap_1.swap)(dex, token, otherToken, amountToSwap);
-            console.log(`${rcpt.transactionHash}: Swap successful...`);
+            const decimal = token.name === interfaces_1.TOKENS.WNEON ? constants_1.WRAPPED_NEON_TOKEN.decimal : constants_1.USDT_TOKEN.decimal;
+            const amountToSwap = (0, units_1.parseUnits)(String(amount), decimal);
+            const rcpt = yield (0, swap_1.swap)(dex, token, otherToken, account, amountToSwap, nonce);
+            return rcpt;
         }
         catch (error) {
-            if (job.data.done) {
-                yield (0, swap_1.unWrapNeons)();
-            }
+            console.error(error);
             throw error;
         }
-    }), { connection: redis });
+    }), { connection: redis, removeOnFail: {
+            count: 0,
+        }, concurrency: 1 });
     workers.push(worker);
+}
+for (let i = 0; i < workers.length; i++) {
+    workers[i].on('completed', (job, result) => __awaiter(void 0, void 0, void 0, function* () {
+        const count = result.count;
+        console.log('job completed, ', job.data);
+        if (count >= 2) {
+            yield (0, swap_1.unWrapNeons)(job.data.account);
+            console.log('job finished');
+        }
+        else {
+            if (job.data.i === 6) {
+                console.log("starting a new job");
+                yield (0, main_1.main)(count + 1);
+            }
+        }
+    }));
 }
 exports.default = redis;

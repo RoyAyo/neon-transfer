@@ -6,21 +6,22 @@ import { Wallet } from "@ethersproject/wallet";
 import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, slippage, swapDeadline, WRAPPED_NEON_TOKEN } from "./constants";
 import { IDEX, ITokens } from "../core/interfaces";
 import { formatUnits, parseUnits } from "@ethersproject/units";
+import { NEON_TOKEN_DECIMALS } from "@neonevm/token-transfer-core";
 
 export function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-export async function swapTokens(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, amountIn: BigNumber): Promise<any> {
+export async function swapTokens(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, address: string, amountIn: BigNumber, n: number = 0): Promise<any> {
     // keep this data in memory instead of in data..
     const allowance = await getAllowance(dex.router, wallet, TOKEN_ADDRESS_FROM.address);
-    
+
     if(allowance.lt(amountIn)) {
         console.error("INSUFFICIENT AMOUNT ALLOWED");
         await approveToken(dex, wallet, TOKEN_ADDRESS_FROM);
         console.log("amount approved");
     }
-    
+
     const amountOutMinInTokenFrom: BigNumber = amountIn.mul(slippage).div(100);
     const amountOutMinInTokenTo: BigNumber = await checkPrice(dex, wallet, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountOutMinInTokenFrom);
 
@@ -28,20 +29,18 @@ export async function swapTokens(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: 
 
     const router = new Contract(dex.router, dex.abi, wallet);
     try {
-        console.log("transaction starting...");
+        console.log('transaction starting...');
 
         const tx = await router.swapExactTokensForTokens(
             amountIn,
             amountOutMinInTokenTo,
             path,
-            wallet.address,
-            swapDeadline
+            address,
+            swapDeadline,
         );
 
         const receipt = await tx.wait();
-
-        console.log(`swap executed! successfully, ${receipt}`);
-
+        console.log(`swap executed! successfully, ${receipt.transactionHash}`);
         return receipt;
 
     } catch (error) {
@@ -77,16 +76,16 @@ export async function checkPrice(dex: IDEX, wallet: Wallet, TOKEN_ADDRESS_FROM: 
     }
 }
 
-export async function wrapNeon(wallet: Wallet, amountToWrap: BigNumber): Promise<void> {
-    const wrapContract = new Contract(WRAPPED_NEON_TOKEN.address, ERC20_ABI, wallet);
-    const tx = await wrapContract.deposit({ value: amountToWrap });
+export async function wrapNeon(wallet: Wallet, address: string, amountToWrap: BigNumber): Promise<void> {
+    const wrapContract = new Contract(address, ERC20_ABI, wallet);
+    const tx = await wrapContract.deposit({ value: amountToWrap, gasPrice: parseUnits('0.0006', 18) });
     await tx.wait();
 
-    console.log("Wrapped NEON successfully");
+    console.log("Wrapped NEON successfully: ", tx.hash);
 }
 
-export async function unwrapNeon(wallet: Wallet, amountToUnwrap: BigNumber): Promise<void> {
-    const wrapContract = new Contract(WRAPPED_NEON_TOKEN.address, ERC20_ABI, wallet);
+export async function unwrapNeon(wallet: Wallet, address: string, amountToUnwrap: BigNumber): Promise<void> {
+    const wrapContract = new Contract(address, ERC20_ABI, wallet);
     const tx = await wrapContract.withdraw(amountToUnwrap);
     await tx.wait();
   

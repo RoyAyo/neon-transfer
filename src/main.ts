@@ -1,34 +1,27 @@
-import { swap_Neon_To, swap_USDT_To, wrapNeons } from "./swap";
-import { MAIN_ADDRESS } from "./utils/constants";
-import { delay } from "./utils/helpers";
+import { parseUnits } from "@ethersproject/units";
+import { swap, swap_Neon_To, swap_USDT_To, unWrapNeons, wrapNeons } from "./swap";
+import { DEXS, MAIN_ADDRESS, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./utils/constants";
+import { delay, swapTokens } from "./utils/helpers";
 
-async function main() {
-    console.log("process starting");
+export async function main(n: number = 0) {
+//     console.log("process starting");
 
-    const skip = await wrapNeons();
+     const skip = await wrapNeons();
 
-    const sum = skip.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-     console.log(sum);
+     // const amount = parseUnits("2", 18);
+     // await swap(DEXS[0], WRAPPED_NEON_TOKEN, USDT_TOKEN, MAIN_ADDRESS[0], amount);
 
-    if(sum === MAIN_ADDRESS.length) {
-     console.log("No wallet has enough balance, ending");
-     console.log("process ending...");
-     process.exit();
-    }
+     // const sum = skip.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 
-   for (let i = 0; i < 3; i++) {
-        await swap_Neon_To(skip);
+     // if(sum === MAIN_ADDRESS.length) {
+     //      console.log("No wallet has enough balance, ending");
+     //      console.log("process ending...");
+     //      process.exit();
+     // }
 
-        console.log("WAITING 5 SECONDS BEFORE SWAPPING NEON BACK")
-        delay(5000);
+     // const nonce = await swap_Neon_To(skip, n);
 
-        await swap_USDT_To(skip, i);
-
-        console.log("FINSHIED SET ", i);
-        delay(10000);
-   }
-
-   
+     // await swap_USDT_To(skip, nonce, n);
 }
 
 main();
