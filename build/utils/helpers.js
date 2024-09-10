@@ -159,7 +159,7 @@ function addEvents(event, i) {
     }));
     event.on('usdt_complete', (accIndex, count) => __awaiter(this, void 0, void 0, function* () {
         if (count >= constants_1.NEON_MOVED_PER_SET * constants_1.NO_OF_SETS) {
-            event.emit('job_complete', count);
+            event.emit('job_complete', accIndex, count);
         }
         else {
             console.log("BATCH COMPLETED...");
@@ -169,24 +169,34 @@ function addEvents(event, i) {
         }
     }));
     event.on('job_complete', (accIndex, count) => __awaiter(this, void 0, void 0, function* () {
-        console.log(`Total Transactions For Account: ${config_1.MAIN_ADDRESS[accIndex]} is  ${count + constants_1.NO_OF_SETS}`);
-        yield (0, swap_1.unWrapNeons)(config_1.MAIN_ADDRESS[i], i);
-        config_1.loggers[accIndex].info(`completed ${count + constants_1.NO_OF_SETS}`);
+        try {
+            console.log(`Total Transactions For Account: ${config_1.MAIN_ADDRESS[accIndex]} is  ${count + constants_1.NO_OF_SETS}`);
+            yield (0, swap_1.unWrapNeons)(config_1.MAIN_ADDRESS[i], i);
+            config_1.loggers[accIndex].info(`completed ${count + constants_1.NO_OF_SETS}`);
+        }
+        catch (error) {
+            console.error(error);
+        }
     }));
     event.on('job_failed', (job, error, accIndex, nonce, count) => __awaiter(this, void 0, void 0, function* () {
-        console.log("Jobs FAILED: ", nonce, config_1.MAIN_ADDRESS[accIndex], count);
-        if (error instanceof TimeoutError) {
-            yield config_1.queues[accIndex].add(job.name, job.data);
-        }
-        else {
-            if (error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
-                delay(4000);
-                const nonce = yield (0, swap_1.getTransactionCount)(accIndex);
-                (0, main_1.main)(nonce, count);
+        try {
+            console.log("Jobs FAILED: ", nonce, config_1.MAIN_ADDRESS[accIndex], count);
+            if (error instanceof TimeoutError) {
+                yield config_1.queues[accIndex].add(job.name, job.data);
             }
             else {
-                console.error("Please restart server for address, ", config_1.MAIN_ADDRESS[accIndex]);
+                if (error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
+                    delay(4000);
+                    const nonce = yield (0, swap_1.getTransactionCount)(accIndex);
+                    (0, main_1.main)(nonce, count);
+                }
+                else {
+                    console.error("Please restart server for address, ", config_1.MAIN_ADDRESS[accIndex], error);
+                }
             }
+        }
+        catch (error) {
+            console.error("Please restart server for address, ", config_1.MAIN_ADDRESS[accIndex], error);
         }
     }));
 }

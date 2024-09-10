@@ -2,7 +2,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 import { Wallet } from "@ethersproject/wallet";
 
-import { MAIN_ADDRESS, provider, queues, wallets } from "../config";
+import { loggers, MAIN_ADDRESS, provider, queues, wallets } from "../config";
 import { IAccount, IDEX, ITokens } from "../core/interfaces";
 import { AMOUNT_NEON_TO_START_WITH, DEXS, NEON_MOVED_PER_SET, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
 import {  approveToken, getAllowance, getBalance, swapTokens, unwrapNeon, wrapNeon } from "../utils/helpers";
@@ -46,6 +46,8 @@ export async function getTransactionCount(accIndex: number): Promise<IAccount> {
 
 export async function swapNEON(account: IAccount, accIndex: number, n: number = 1) {
     if(account.balance.lte(0)) {
+        loggers[accIndex].error("Not Enough Wrapped Neon To Transact");
+        console.error(`${MAIN_ADDRESS[accIndex]} has 0 wNeon and cannot continue...`);
         return;
     }
     let noTimes = Math.floor(Number(formatUnits(account.balance, WRAPPED_NEON_TOKEN.decimal)));
@@ -79,7 +81,8 @@ export async function swapUSDT(nonce: number, accIndex: number, count?: number) 
 
 export async function ensureAllowance() {
     for (let i = 0; i < MAIN_ADDRESS.length; i++) {
-        const allowance_NEON = await getAllowance(wallets[i], DEXS[0].router, WRAPPED_NEON_TOKEN.address);
+        try {
+            const allowance_NEON = await getAllowance(wallets[i], DEXS[0].router, WRAPPED_NEON_TOKEN.address);
         const allowance_USDT = await getAllowance(wallets[i], DEXS[0].router, USDT_TOKEN.address);
         const minAmount_Neon = parseUnits("100", WRAPPED_NEON_TOKEN.decimal);
         const minAmount_USDT = parseUnits("100", USDT_TOKEN.decimal);
@@ -94,6 +97,9 @@ export async function ensureAllowance() {
             console.error("INSUFFICIENT AMOUNT OF USDT ALLOWED FOR ADDRESS ", MAIN_ADDRESS[i]);
             await approveToken(wallets[i], DEXS[0], USDT_TOKEN);
             console.log(`APPROVED MORE TOKENS`);
+        }
+        } catch (error) {
+            console.error("Unable to run approval for ", MAIN_ADDRESS[i]);   
         }
     }
 }

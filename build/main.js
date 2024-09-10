@@ -26,10 +26,9 @@ function start() {
         console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
         yield (0, swap_1.ensureAllowance)();
         yield (0, helpers_1.delay)(10000); //adding delays to ensure the transaction nonce is updated...
-        console.log("...DONE...");
+        console.log("...TOKEN APPROVALS DONE...");
         for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
             const nonce = yield (0, swap_1.getTransactionCount)(i);
-            console.log(nonce);
             main(nonce, i);
         }
     });

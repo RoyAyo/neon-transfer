@@ -65,6 +65,8 @@ function getTransactionCount(accIndex) {
 function swapNEON(account_1, accIndex_1) {
     return __awaiter(this, arguments, void 0, function* (account, accIndex, n = 1) {
         if (account.balance.lte(0)) {
+            config_1.loggers[accIndex].error("Not Enough Wrapped Neon To Transact");
+            console.error(`${config_1.MAIN_ADDRESS[accIndex]} has 0 wNeon and cannot continue...`);
             return;
         }
         let noTimes = Math.floor(Number((0, units_1.formatUnits)(account.balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));

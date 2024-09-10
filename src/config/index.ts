@@ -63,7 +63,7 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
 
     const queueName = `x--${i}`;
     // CONFIGURE QUEUES
-    queues.push( new Queue(queueName, {
+    queues.push(new Queue(queueName, {
       defaultJobOptions: {
         attempts: 2
       },
@@ -92,7 +92,7 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
             console.error(error);
             throw error;
         }
-    }, { connection: redis, concurrency: 2});
+    }, { connection: redis, concurrency: 3});
 
     workers.push(worker);
 }

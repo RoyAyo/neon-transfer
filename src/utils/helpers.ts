@@ -157,7 +157,7 @@ export function addEvents(event: EventEmitter, i: number) {
 
     event.on('usdt_complete', async (accIndex: number, count: number) => {
         if(count >= NEON_MOVED_PER_SET * NO_OF_SETS) {
-            event.emit('job_complete', count);
+            event.emit('job_complete', accIndex, count);
         } else {
             console.log("BATCH COMPLETED...");
             delay(10000);
@@ -167,24 +167,32 @@ export function addEvents(event: EventEmitter, i: number) {
     })
 
     event.on('job_complete', async (accIndex: number, count: number) => {
-        console.log(`Total Transactions For Account: ${MAIN_ADDRESS[accIndex]} is  ${count + NO_OF_SETS}`);
-        await unWrapNeons(MAIN_ADDRESS[i], i);
-        loggers[accIndex].info(`completed ${count + NO_OF_SETS}`);
+        try {
+            console.log(`Total Transactions For Account: ${MAIN_ADDRESS[accIndex]} is  ${count + NO_OF_SETS}`);
+            await unWrapNeons(MAIN_ADDRESS[i], i);
+            loggers[accIndex].info(`completed ${count + NO_OF_SETS}`);
+        } catch (error) {
+            console.error(error);
+        }
     });
 
     event.on('job_failed', async (job: Job, error: any, accIndex: number, nonce: number, count: number) => {
-        console.log("Jobs FAILED: ", nonce, MAIN_ADDRESS[accIndex], count);
+        try {
+            console.log("Jobs FAILED: ", nonce, MAIN_ADDRESS[accIndex], count);
 
-        if(error instanceof TimeoutError) {
-            await queues[accIndex].add(job.name, job.data);
-        } else {
-            if(error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
-                delay(4000);
-                const nonce = await getTransactionCount(accIndex);
-                main(nonce, count);
+            if(error instanceof TimeoutError) {
+                await queues[accIndex].add(job.name, job.data);
             } else {
-                console.error("Please restart server for address, ", MAIN_ADDRESS[accIndex]);
+                if(error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
+                    delay(4000);
+                    const nonce = await getTransactionCount(accIndex);
+                    main(nonce, count);
+                } else {
+                    console.error("Please restart server for address, ", MAIN_ADDRESS[accIndex], error);
+                }
             }
+        } catch (error) {
+            console.error("Please restart server for address, ", MAIN_ADDRESS[accIndex], error);
         }
     });
 }

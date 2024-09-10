@@ -91,7 +91,7 @@ for (let i = 0; i < exports.NO_OF_KEYS; i++) {
             console.error(error);
             throw error;
         }
-    }), { connection: redis, concurrency: 2 });
+    }), { connection: redis, concurrency: 3 });
     exports.workers.push(worker);
 }
 exports.default = redis;
