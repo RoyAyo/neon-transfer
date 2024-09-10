@@ -7,7 +7,7 @@ require('dotenv').config({});
 
 export const NEON_PRIVATE = process.env.NEON_PRIVATE;
 export const PROXY_URL = `https://devnet.neonevm.org`;
-export const MAIN_PROXY_URL = `https://neon-proxy-mainnet.solana.p2p.org`;
+// export const PROXY_URL = `https://neon-proxy-mainnet.solana.p2p.org`;
 
 export const WRAPPED_NEON_TOKEN: ITokens = {
   name: TOKENS.WNEON,
@@ -32,11 +32,14 @@ export const USDT_TOKEN: ITokens = {
 // };
 
 export const FIXED_TOKENS_TO_APPROVE = "1000";
-export const swapDeadline = BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 10 minutes
-export const slippage = 97; // %;
+export const slippage = 98; // %;
 export const AMOUNT_NEON_TO_START_WITH = 20;
-export const NEON_MOVED_PER_SET = 2;
-export const NO_OF_SETS = 2;
+export const NEON_MOVED_PER_SET = 4;
+export const NO_OF_SETS = 3;
+export const NEON_AMOUNT = 0.3;
+export const swapDeadline = BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 10 minutes
+export const TRANSACTION_TIMEOUT = 120000;
+
 
 export const ERC20_ABI = [
     "function deposit() payable",
@@ -55,5 +58,13 @@ export const DEXS: IDEX[] = [
         "function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint[] memory amounts)",
         "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline)"
       ]
-  }
+  },
+  // {
+  //   name: "IceCreamSwap",
+  //   router: "0xBb5e1777A331ED93E07cF043363e48d320eb96c4",
+  //   abi: [
+  //     "function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint[] memory amounts)",
+  //     "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline)"
+  //   ]
+  // },
 ]

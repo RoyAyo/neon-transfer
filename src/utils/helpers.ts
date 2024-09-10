@@ -5,9 +5,9 @@ import { formatUnits, parseUnits } from "@ethersproject/units";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 
-import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, NEON_MOVED_PER_SET, NO_OF_SETS, slippage, swapDeadline, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./constants";
-import { IDEX, ITokens } from "../core/interfaces";
-import { events, loggers, MAIN_ADDRESS, queues, wallets } from "../config";
+import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, NEON_MOVED_PER_SET, NO_OF_SETS, slippage, swapDeadline, TRANSACTION_TIMEOUT, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./constants";
+import { IDEX, ITokens, TOKENS } from "../core/interfaces";
+import { events, loggers, MAIN_ADDRESS, provider, queues, wallets } from "../config";
 import { getTransactionCount, swapUSDT, unWrapNeons } from "../swap";
 import { main } from "../main";
 import { Job } from "bullmq";
@@ -34,7 +34,7 @@ export async function swapTokens(accountIndex: number, TOKEN_ADDRESS_FROM: IToke
 
     const router = new Contract(dex.router, dex.abi, wallet);
     try {
-        // const gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(150)).div(100);
+        const gasPrice = (await provider.getGasPrice()) // .mul(BigNumber.from(150)).div(100);
 
         console.log(`Transaction STARTED... Address: ${wallet.address}, Amount: ${parsedAmount} Nonce: ${nonce} From: ${TOKEN_ADDRESS_FROM.name}`);
 
@@ -49,7 +49,7 @@ export async function swapTokens(accountIndex: number, TOKEN_ADDRESS_FROM: IToke
             }
         );
 
-        withTimeout(tx.wait(), 60000)
+        withTimeout(tx.wait(), TRANSACTION_TIMEOUT)
             .then((receipt: any) => {
                 console.log(`swap successful for ${MAIN_ADDRESS[accountIndex]} hash: ${receipt.transactionHash}`);
                 if(TOKEN_ADDRESS_FROM.address === USDT_TOKEN.address) {
@@ -59,7 +59,7 @@ export async function swapTokens(accountIndex: number, TOKEN_ADDRESS_FROM: IToke
                 }
                 loggers[accountIndex].info(`swap successful: ${receipt.transactionHash}`)
             }).catch((error: any) => {
-                events[accountIndex].emit('job_failed', job, error, accountIndex, nonce, count);
+                events[accountIndex].emit('job_failed', job, error, accountIndex, nonce, count, TOKEN_ADDRESS_FROM.name);
                 loggers[accountIndex].error(`Transaction with nonce ${nonce} failed:`, error);
                 console.error(error);
             });
@@ -100,7 +100,8 @@ export async function checkPrice(wallet: Wallet, dex: IDEX, TOKEN_ADDRESS_FROM: 
     try {
         const amounts = await router.getAmountsOut(amountIn, path);
         return amounts[1];
-    } catch (error) {
+    } catch (error: any) {
+        console.log();
         console.error(`Error getting prices from ${dex.name}:`, error);
         return BigNumber.from(0);
     }
@@ -113,8 +114,10 @@ export async function wrapNeon(wallet: Wallet, amountToWrap: BigNumber): Promise
         const tx = await wrapContract.deposit({
             value: amountToWrap
         });
+
         await tx.wait();
         console.log("Wrapped NEON successfully: ", tx.hash);
+
     } catch (error) {
         console.error(error);
     }
@@ -176,17 +179,22 @@ export function addEvents(event: EventEmitter, i: number) {
         }
     });
 
-    event.on('job_failed', async (job: Job, error: any, accIndex: number, nonce: number, count: number) => {
+    event.on('job_failed', async (job: Job, error: any, accIndex: number, nonce: number, count: number, token: TOKENS) => {
         try {
-            console.log("SWAP FAILED for: ", nonce, MAIN_ADDRESS[accIndex], count);
+            console.log("SWAP FAILED for: ", nonce, MAIN_ADDRESS[accIndex], count, error);
+            console.log(error.message.split(" "));
 
             if(error instanceof TimeoutError) {
                 await queues[accIndex].add(job.name, job.data);
             } else {
-                if(error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
-                    delay(4000);
-                    const nonce = await getTransactionCount(accIndex);
-                    main(nonce, accIndex, count);
+                if( error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement' || error.message.split(" ")[2] === 'gas' || error.message.split(" ")[1] === 'revert' || (error.message.split(" ")[0] === 'transaction' && error.message.split(" ")[1] === 'failed' )) {
+                    if(token === TOKENS.USDT) {
+                        await queues[accIndex].add(job.name, job.data);
+                    } else {
+                        delay(8000);
+                        const nonce = await getTransactionCount(accIndex);
+                        main(nonce, accIndex, count);
+                    }
                 } else {
                     console.error("Please restart server for address, ", MAIN_ADDRESS[accIndex], error);
                 }

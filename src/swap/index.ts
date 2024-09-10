@@ -4,13 +4,13 @@ import { Wallet } from "@ethersproject/wallet";
 
 import { loggers, MAIN_ADDRESS, provider, queues, wallets } from "../config";
 import { IAccount, IDEX, ITokens } from "../core/interfaces";
-import { AMOUNT_NEON_TO_START_WITH, DEXS, NEON_MOVED_PER_SET, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
+import { AMOUNT_NEON_TO_START_WITH, DEXS, NEON_AMOUNT, NEON_MOVED_PER_SET, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
 import {  approveToken, getAllowance, getBalance, swapTokens, unwrapNeon, wrapNeon } from "../utils/helpers";
 import { Job } from "bullmq";
 
 export async function wrapNeons(): Promise<void> {
     for(let i = 0; i < MAIN_ADDRESS.length; i++) {
-        const amountToSwap = parseUnits(String(AMOUNT_NEON_TO_START_WITH), WRAPPED_NEON_TOKEN.decimal);
+        const amountToSwap = parseUnits(String(3), WRAPPED_NEON_TOKEN.decimal);
         const balance = await getBalance(provider, MAIN_ADDRESS[i]);
         console.log(`My total NEON BALANCE for address ${MAIN_ADDRESS[i]} is ${formatUnits(balance,WRAPPED_NEON_TOKEN.decimal)}`);
         if (Number(formatUnits(balance, WRAPPED_NEON_TOKEN.decimal)) < AMOUNT_NEON_TO_START_WITH) {
@@ -24,7 +24,7 @@ export async function wrapNeons(): Promise<void> {
 
 export async function unWrapNeons(address: string, accIndex: number) {
         const balance = await getBalance(provider, address, WRAPPED_NEON_TOKEN);
-        console.log(balance);
+        console.log(formatUnits(balance, WRAPPED_NEON_TOKEN.decimal));
         if(balance.gt(0)) {
             await unwrapNeon(wallets[accIndex], balance);
             console.log("UNWRAPPED MY REMAINING NEON ", balance);
@@ -55,7 +55,7 @@ export async function swapNEON(account: IAccount, accIndex: number, n: number = 
     for(let j = 0; j < noTimes; j++) {
         queues[accIndex].add(`${MAIN_ADDRESS[accIndex]}-neon-job`, {
             token: WRAPPED_NEON_TOKEN,
-            amount: 1,
+            amount: NEON_AMOUNT,
             count: n + j,
             accountIndex: accIndex,
             nonce: account.nonce + j,
@@ -89,13 +89,13 @@ export async function ensureAllowance() {
 
         if(allowance_NEON.lt(minAmount_Neon)) {
             console.error("INSUFFICIENT AMOUNT OF NEON ALLOWED FOR ADDRESS ", MAIN_ADDRESS[i]);
-            await approveToken(wallets[i], DEXS[0], WRAPPED_NEON_TOKEN);
+            await approveToken(wallets[i], DEXS[1], WRAPPED_NEON_TOKEN);
             console.log(`APPROVED MORE TOKENS`);
         }
 
         if(allowance_USDT.lt(minAmount_USDT)) {
             console.error("INSUFFICIENT AMOUNT OF USDT ALLOWED FOR ADDRESS ", MAIN_ADDRESS[i]);
-            await approveToken(wallets[i], DEXS[0], USDT_TOKEN);
+            await approveToken(wallets[i], DEXS[1], USDT_TOKEN);
             console.log(`APPROVED MORE TOKENS`);
         }
         } catch (error) {
