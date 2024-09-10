@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.wrapNeons = wrapNeons;
 exports.unWrapNeons = unWrapNeons;
 exports.swap = swap;
-exports.getTransactionCounts = getTransactionCounts;
+exports.getTransactionCount = getTransactionCount;
 exports.swapNEON = swapNEON;
 exports.swapUSDT = swapUSDT;
 exports.ensureAllowance = ensureAllowance;
@@ -46,66 +46,57 @@ function unWrapNeons(address, accIndex) {
         }
     });
 }
-function swap(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce, accIndex, count) {
+function swap(accountIndex, TOKEN_FROM, TOKEN_TO, dex, amountToSwap, nonce, count, job) {
     return __awaiter(this, void 0, void 0, function* () {
-        yield (0, helpers_1.swapTokens)(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce, accIndex, count);
+        yield (0, helpers_1.swapTokens)(accountIndex, TOKEN_FROM, TOKEN_TO, dex, amountToSwap, nonce, count, job);
     });
 }
 ;
-function getTransactionCounts() {
+function getTransactionCount(accIndex) {
     return __awaiter(this, void 0, void 0, function* () {
-        const txCounts = [];
-        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
-            const nonce = yield config_1.provider.getTransactionCount(config_1.MAIN_ADDRESS[i], 'latest');
-            const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[i], constants_1.WRAPPED_NEON_TOKEN);
-            txCounts.push({
-                nonce,
-                balance
-            });
-        }
-        return txCounts;
+        const nonce = yield config_1.provider.getTransactionCount(config_1.MAIN_ADDRESS[accIndex], 'latest');
+        const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[accIndex], constants_1.WRAPPED_NEON_TOKEN);
+        return {
+            nonce,
+            balance
+        };
     });
 }
-function swapNEON(account_1) {
-    return __awaiter(this, arguments, void 0, function* (account, n = 1) {
-        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
-            if (account[i].balance.lte(0)) {
-                continue;
-            }
-            let noTimes = Math.floor(Number((0, units_1.formatUnits)(account[i].balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));
-            noTimes = noTimes < constants_1.NEON_MOVED_PER_SET ? noTimes : constants_1.NEON_MOVED_PER_SET;
-            for (let j = 0; j < noTimes; j++) {
-                yield config_1.queues[i].add(`${config_1.MAIN_ADDRESS[i]}-neon-job`, {
-                    token: constants_1.WRAPPED_NEON_TOKEN,
-                    account: config_1.MAIN_ADDRESS[i],
-                    amount: 1,
-                    count: n + j,
-                    accountIndex: i,
-                    nonce: account[i].nonce + j,
-                });
-            }
+function swapNEON(account_1, accIndex_1) {
+    return __awaiter(this, arguments, void 0, function* (account, accIndex, n = 1) {
+        if (account.balance.lte(0)) {
+            return;
+        }
+        let noTimes = Math.floor(Number((0, units_1.formatUnits)(account.balance, constants_1.WRAPPED_NEON_TOKEN.decimal)));
+        noTimes = noTimes < constants_1.NEON_MOVED_PER_SET ? noTimes : constants_1.NEON_MOVED_PER_SET;
+        for (let j = 0; j < noTimes; j++) {
+            config_1.queues[accIndex].add(`${config_1.MAIN_ADDRESS[accIndex]}-neon-job`, {
+                token: constants_1.WRAPPED_NEON_TOKEN,
+                amount: 1,
+                count: n + j,
+                accountIndex: accIndex,
+                nonce: account.nonce + j,
+            });
         }
     });
 }
 ;
-function swapUSDT(nonce_1) {
-    return __awaiter(this, arguments, void 0, function* (nonce, n = 1) {
-        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
-            const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[i], constants_1.USDT_TOKEN);
-            if (balance.lte(0)) {
-                console.log("USDT TOO SMALL FOR TRANSFER");
-                throw new Error("USDT TOO SMALL FOR TRANSFER");
-            }
-            console.log("MOVING USDT WITH BALANCE ", (0, units_1.formatUnits)(balance, 6), " back");
-            yield config_1.queues[i].add(`${config_1.MAIN_ADDRESS[i]}-usdt-job`, {
-                token: constants_1.USDT_TOKEN,
-                account: config_1.MAIN_ADDRESS[i],
-                amount: (0, units_1.formatUnits)(balance, constants_1.USDT_TOKEN.decimal),
-                count: n,
-                accountIndex: i,
-                nonce: nonce,
-            });
+function swapUSDT(nonce, accIndex, count) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const balance = yield (0, helpers_1.getBalance)(config_1.provider, config_1.MAIN_ADDRESS[accIndex], constants_1.USDT_TOKEN);
+        if (Number((0, units_1.formatUnits)(balance, constants_1.USDT_TOKEN.decimal)) <= 0) {
+            console.log("USDT TOO SMALL FOR TRANSFER");
+            ;
+            return;
         }
+        console.log("MOVING USDT WITH BALANCE ", (0, units_1.formatUnits)(balance, 6), " back");
+        config_1.queues[accIndex].add(`${config_1.MAIN_ADDRESS[accIndex]}-usdt-job`, {
+            token: constants_1.USDT_TOKEN,
+            amount: (0, units_1.formatUnits)(balance, constants_1.USDT_TOKEN.decimal),
+            count,
+            accountIndex: accIndex,
+            nonce: nonce,
+        });
     });
 }
 ;

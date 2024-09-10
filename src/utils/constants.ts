@@ -53,7 +53,7 @@ export const FIXED_TOKENS_TO_APPROVE = "1000";
 export const swapDeadline = BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 10 minutes
 export const slippage = 97; // %;
 export const AMOUNT_NEON_TO_START_WITH = 20;
-export const NEON_MOVED_PER_SET = 6;
+export const NEON_MOVED_PER_SET = 2;
 export const NO_OF_SETS = 2;
 
 export const ERC20_ABI = [

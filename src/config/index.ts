@@ -47,8 +47,7 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
             winston.format.timestamp(),
             winston.format.printf(({ timestamp, message }) => {
               return `${timestamp}: ${message}`;
-            }),
-            winston.format.json(),
+            })
           ),
           transports: [
             new winston.transports.File({
@@ -64,20 +63,20 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
 
     const queueName = `x--${i}`;
     // CONFIGURE QUEUES
-    queues.push(new Queue(queueName));
+    queues.push( new Queue(queueName, {
+      defaultJobOptions: {
+        attempts: 2
+      },
+      connection: redis,
+    }));
 
     // CONFIGURE WORKERS FOR  QUEUE
     const worker = new Worker(queueName, async (job: Job) => {
         const token: ITokens = job.data.token;
-        const account: string = job.data.account;
         const amount = job.data.amount;
-        const accIndex = job.data.accountIndex;
+        const accountIndex = job.data.accountIndex;
         const nonce = job.data.nonce;
         const count = job.data.count;
-
-        if(!account) {
-            throw new Error("Invalid account");
-        }
 
         try {
             const otherToken = token.name === TOKENS.WNEON ? USDT_TOKEN : WRAPPED_NEON_TOKEN;
@@ -87,27 +86,15 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
             const rand = Math.floor(Math.random() * DEXS.length); // use a random dex
             const dex = DEXS[rand];
             
-            await swap(wallets[0], dex, token, otherToken, account, amountToSwap, nonce, accIndex, count);
+            await swap(accountIndex, token, otherToken, dex, amountToSwap, nonce, count, job);
 
         } catch (error: any) {
-            loggers[accIndex].error(error?.message); // you want to retry this
+            console.error(error);
             throw error;
         }
-    }, { connection: redis, concurrency: 1});
+    }, { connection: redis, concurrency: 2});
 
     workers.push(worker);
-}
-
-for (let i = 0; i < workers.length; i++) {
-    // FAILED EMITTERS FOR EACH EVENT
-    workers[i].on('failed', async (job: Job<any, any, string> | undefined, err: Error) => {
-        console.error(err);
-        if (job && job.attemptsMade < 2) {
-            await job.retry();
-          } else {
-            console.log(`Job ${job?.id} has exceeded retry attempts.`);
-          }
-    });
 }
 
 export default redis;

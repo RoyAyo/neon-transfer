@@ -6,7 +6,7 @@ import { MAIN_ADDRESS, provider, queues, wallets } from "../config";
 import { IAccount, IDEX, ITokens } from "../core/interfaces";
 import { AMOUNT_NEON_TO_START_WITH, DEXS, NEON_MOVED_PER_SET, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
 import {  approveToken, getAllowance, getBalance, swapTokens, unwrapNeon, wrapNeon } from "../utils/helpers";
-import { NEON_TOKEN_DECIMALS } from "@neonevm/token-transfer-core";
+import { Job } from "bullmq";
 
 export async function wrapNeons(): Promise<void> {
     for(let i = 0; i < MAIN_ADDRESS.length; i++) {
@@ -31,62 +31,50 @@ export async function unWrapNeons(address: string, accIndex: number) {
         }
 }
 
-export async function swap(wallet: Wallet, dex: IDEX, TOKEN_FROM: ITokens, TOKEN_TO: ITokens, address: string, amountToSwap: BigNumber, nonce?: number, accIndex?: number, count?: number) {
-    await swapTokens(wallet, dex, TOKEN_FROM, TOKEN_TO, address, amountToSwap, nonce, accIndex, count);
+export async function swap(accountIndex: number, TOKEN_FROM: ITokens, TOKEN_TO: ITokens, dex: IDEX, amountToSwap: BigNumber, nonce?: number, count?: number, job?: Job) {
+    await swapTokens(accountIndex, TOKEN_FROM, TOKEN_TO, dex, amountToSwap, nonce, count, job);
 };
 
-export async function getTransactionCounts(): Promise<IAccount[]> {
-    const txCounts = [];
-    for(let i = 0; i < MAIN_ADDRESS.length; i++) {
-        const nonce = await provider.getTransactionCount(MAIN_ADDRESS[i], 'latest');
-        const balance = await getBalance(provider, MAIN_ADDRESS[i], WRAPPED_NEON_TOKEN);
-        txCounts.push({
-            nonce,
-            balance
-        });
-    }
-    return txCounts;
+export async function getTransactionCount(accIndex: number): Promise<IAccount> {
+    const nonce = await provider.getTransactionCount(MAIN_ADDRESS[accIndex], 'latest');
+    const balance = await getBalance(provider, MAIN_ADDRESS[accIndex], WRAPPED_NEON_TOKEN);
+    return {
+        nonce,
+        balance
+    };
 }
 
-export async function swapNEON(account: IAccount[], n: number = 1) {
-    for (let i = 0; i < MAIN_ADDRESS.length; i++) {
-        if(account[i].balance.lte(0)) {
-            continue;
-        }
-
-        let noTimes = Math.floor(Number(formatUnits(account[i].balance, WRAPPED_NEON_TOKEN.decimal)));
-        noTimes = noTimes < NEON_MOVED_PER_SET ? noTimes : NEON_MOVED_PER_SET;
-        
-        for(let j = 0; j < noTimes; j++) {
-            await queues[i].add(`${MAIN_ADDRESS[i]}-neon-job`, {
-                token: WRAPPED_NEON_TOKEN,
-                account: MAIN_ADDRESS[i],
-                amount: 1,
-                count: n + j,
-                accountIndex: i,
-                nonce: account[i].nonce + j,
-            });
-        }
+export async function swapNEON(account: IAccount, accIndex: number, n: number = 1) {
+    if(account.balance.lte(0)) {
+        return;
+    }
+    let noTimes = Math.floor(Number(formatUnits(account.balance, WRAPPED_NEON_TOKEN.decimal)));
+    noTimes = noTimes < NEON_MOVED_PER_SET ? noTimes : NEON_MOVED_PER_SET;
+    for(let j = 0; j < noTimes; j++) {
+        queues[accIndex].add(`${MAIN_ADDRESS[accIndex]}-neon-job`, {
+            token: WRAPPED_NEON_TOKEN,
+            amount: 1,
+            count: n + j,
+            accountIndex: accIndex,
+            nonce: account.nonce + j,
+        });
     }
 };
 
-export async function swapUSDT(nonce: number, n: number = 1) {
-        for (let i = 0; i < MAIN_ADDRESS.length; i++) {
-            const balance = await getBalance(provider, MAIN_ADDRESS[i], USDT_TOKEN);
-            if(balance.lte(0)) {
-                console.log("USDT TOO SMALL FOR TRANSFER");
-                throw new Error("USDT TOO SMALL FOR TRANSFER")
-            }
-            console.log("MOVING USDT WITH BALANCE ", formatUnits(balance, 6), " back");
-            await queues[i].add(`${MAIN_ADDRESS[i]}-usdt-job`, {
-                token: USDT_TOKEN,
-                account: MAIN_ADDRESS[i],
-                amount: formatUnits(balance, USDT_TOKEN.decimal),
-                count: n,
-                accountIndex: i,
-                nonce: nonce,
-            });
+export async function swapUSDT(nonce: number, accIndex: number, count?: number) {
+    const balance = await getBalance(provider, MAIN_ADDRESS[accIndex], USDT_TOKEN);
+    if(Number(formatUnits(balance, USDT_TOKEN.decimal)) <= 0) {
+        console.log("USDT TOO SMALL FOR TRANSFER");;
+        return;
     }
+    console.log("MOVING USDT WITH BALANCE ", formatUnits(balance, 6), " back");
+    queues[accIndex].add(`${MAIN_ADDRESS[accIndex]}-usdt-job`, {
+        token: USDT_TOKEN,
+        amount: formatUnits(balance, USDT_TOKEN.decimal),
+        count,
+        accountIndex: accIndex,
+        nonce: nonce,
+    });
 };
 
 export async function ensureAllowance() {

@@ -48,7 +48,7 @@ exports.FIXED_TOKENS_TO_APPROVE = "1000";
 exports.swapDeadline = bignumber_1.BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 10 minutes
 exports.slippage = 97; // %;
 exports.AMOUNT_NEON_TO_START_WITH = 20;
-exports.NEON_MOVED_PER_SET = 6;
+exports.NEON_MOVED_PER_SET = 2;
 exports.NO_OF_SETS = 2;
 exports.ERC20_ABI = [
     "function deposit() payable",

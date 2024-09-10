@@ -1,60 +1,83 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
+import { EventEmitter } from "stream";
+import { formatUnits, parseUnits } from "@ethersproject/units";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 
-import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, NEON_MOVED_PER_SET, NO_OF_SETS, slippage, swapDeadline, WRAPPED_NEON_TOKEN } from "./constants";
+import { ERC20_ABI, FIXED_TOKENS_TO_APPROVE, NEON_MOVED_PER_SET, NO_OF_SETS, slippage, swapDeadline, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./constants";
 import { IDEX, ITokens } from "../core/interfaces";
-import { formatUnits, parseUnits } from "@ethersproject/units";
-import { NEON_TOKEN_DECIMALS } from "@neonevm/token-transfer-core";
-import { events, loggers, MAIN_ADDRESS, provider, workers } from "../config";
-import { EventEmitter } from "stream";
-import { swapUSDT, unWrapNeons } from "../swap";
+import { events, loggers, MAIN_ADDRESS, queues, wallets } from "../config";
+import { getTransactionCount, swapUSDT, unWrapNeons } from "../swap";
 import { main } from "../main";
+import { Job } from "bullmq";
+
+class TimeoutError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'TimeoutError';
+    }
+  }
 
 export function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function swapTokens(wallet: Wallet, dex: IDEX, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, address: string, amountIn: BigNumber, nonce: number = 0, accIndex: number = 0, count: number = 0): Promise<void> {
+export async function swapTokens(accountIndex: number, TOKEN_ADDRESS_FROM: ITokens, TOKEN_ADDRESS_TO: ITokens, dex: IDEX, amountIn: BigNumber, nonce: number = 0, count: number = 0, job?: Job): Promise<void> {
+    const wallet = wallets[accountIndex];
+
     const amountOutMinInTokenFrom: BigNumber = amountIn.mul(slippage).div(100);
     const amountOutMinInTokenTo: BigNumber = await checkPrice(wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountOutMinInTokenFrom);
+    const parsedAmount = formatUnits(amountIn, TOKEN_ADDRESS_FROM.decimal);
 
     const path = [TOKEN_ADDRESS_FROM.address, TOKEN_ADDRESS_TO.address];
 
     const router = new Contract(dex.router, dex.abi, wallet);
     try {
-        const gasPrice = (await provider.getGasPrice()) //.mul(BigNumber.from(120)).div(100);
+        // const gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(150)).div(100);
 
-        console.log(`Transaction STARTED... Address: ${address}, Nonce: ${nonce} From: ${TOKEN_ADDRESS_FROM.name}`);
+        console.log(`Transaction STARTED... Address: ${wallet.address}, Amount: ${parsedAmount} Nonce: ${nonce} From: ${TOKEN_ADDRESS_FROM.name}`);
 
         const tx = await router.swapExactTokensForTokens(
             amountIn,
             amountOutMinInTokenTo,
             path,
-            address,
+            wallet.address,
             swapDeadline,
-        {
-            nonce,
-            gasLimit: 1000000,
-            gasPrice,
-        }
+            {
+                nonce,
+            }
         );
 
+        withTimeout(tx.wait(), 60000)
+            .then((receipt: any) => {
+                console.log(`swap successful: ${receipt.transactionHash}`);
+                if(TOKEN_ADDRESS_FROM.address === USDT_TOKEN.address) {
+                    events[accountIndex].emit('usdt_complete', accountIndex, count);
+                } else {
+                    events[accountIndex].emit('neon_complete', nonce, accountIndex, count);
+                }
+                loggers[accountIndex].info(`swap successful: ${receipt.transactionHash}`)
+            }).catch((error: any) => {
+                events[accountIndex].emit('job_failed', job, error, accountIndex, nonce, count);
+                loggers[accountIndex].error(`Transaction with nonce ${nonce} failed:`, error);
+                console.error(error);
+            });
 
-        tx.wait().then((receipt: any) => {
-            console.log(`swap successful: ${receipt.transactionHash}`);
-            events[accIndex].emit('neon_complete', nonce, count);
-            loggers[accIndex].info(`swap successful: ${receipt.transactionHash}`)
-        }).catch((error: any) => {
-            events[accIndex].emit('job_failed');
-            loggers[accIndex].error(`Transaction with nonce ${nonce} failed:`, error);
-        });
-
-    } catch (error) {
-        console.error(`Error executing trade on ${dex.name}:`, error);
-        throw Error;
+    } catch (error: any) {
+        loggers[accountIndex].error(`Transaction with nonce ${nonce} failed:`, error);
+        events[accountIndex].emit('job_failed', job, error, accountIndex, nonce, count);
     }
+}
+
+function withTimeout(promise: Promise<any>, timeoutMs: number): Promise<any> {
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+            reject(new TimeoutError(`Transaction timed out after ${timeoutMs} ms`));
+        }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]);
 }
 
 export async function getBalance(provider: JsonRpcProvider, address: string, contractAddress?: ITokens): Promise<BigNumber> {
@@ -99,7 +122,6 @@ export async function wrapNeon(wallet: Wallet, amountToWrap: BigNumber): Promise
 
 export async function unwrapNeon( wallet: Wallet, amountToUnwrap: BigNumber, nonce?: number): Promise<void> {
     const wrapContract = new Contract(WRAPPED_NEON_TOKEN.address, ERC20_ABI, wallet);
-    // const gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(2000)).div(100);
     try {
         console.log("Unwrapping Neon...")
         const tx = await wrapContract.withdraw(amountToUnwrap);
@@ -125,31 +147,44 @@ export async function getAllowance(wallet: Wallet, dexRouterAddress: string, TOK
 }
 
 export function addEvents(event: EventEmitter, i: number) {
-    event.on('neon_complete', async (nonce: number, count: number) => {
+    event.on('neon_complete', async (nonce: number, accIndex: number, count: number) => {
         console.log("Neon completed", count);
         if(count % NEON_MOVED_PER_SET === 0) {
             console.log("SWAPPING USDT BACK");
-            await swapUSDT(nonce + 1, count);
-            event.emit('usdt_complete', count);
+            await swapUSDT(nonce + 1, accIndex, count);
         }
     });
 
-    event.on('usdt_complete', async (count) => {
+    event.on('usdt_complete', async (accIndex: number, count: number) => {
         if(count >= NEON_MOVED_PER_SET * NO_OF_SETS) {
-            event.emit('job_complete');
+            event.emit('job_complete', count);
         } else {
             console.log("BATCH COMPLETED...");
-            await main(count + 1);
+            delay(10000);
+            const nonce = await getTransactionCount(accIndex);
+            await main(nonce, accIndex, count + 1);
         }
     })
 
-    event.on('job_complete', async () => {
-        console.log("Jobs Completed");
+    event.on('job_complete', async (accIndex: number, count: number) => {
+        console.log(`Total Transactions For Account: ${MAIN_ADDRESS[accIndex]} is  ${count + NO_OF_SETS}`);
         await unWrapNeons(MAIN_ADDRESS[i], i);
+        loggers[accIndex].info(`completed ${count + NO_OF_SETS}`);
     });
 
-    event.on('job_failed', async (nonce: number) => {
-        console.log("Jobs FAILED", nonce);
-        //think of retry.
+    event.on('job_failed', async (job: Job, error: any, accIndex: number, nonce: number, count: number) => {
+        console.log("Jobs FAILED: ", nonce, MAIN_ADDRESS[accIndex], count);
+
+        if(error instanceof TimeoutError) {
+            await queues[accIndex].add(job.name, job.data);
+        } else {
+            if(error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
+                delay(4000);
+                const nonce = await getTransactionCount(accIndex);
+                main(nonce, count);
+            } else {
+                console.error("Please restart server for address, ", MAIN_ADDRESS[accIndex]);
+            }
+        }
     });
 }

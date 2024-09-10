@@ -11,26 +11,35 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.main = main;
 exports.start = start;
+const config_1 = require("./config");
 const swap_1 = require("./swap");
-function main() {
-    return __awaiter(this, arguments, void 0, function* (n = 1) {
-        const nonce = yield (0, swap_1.getTransactionCounts)();
-        // await swapNEON(nonce, n);
+const helpers_1 = require("./utils/helpers");
+function main(nonce_1, accIndex_1) {
+    return __awaiter(this, arguments, void 0, function* (nonce, accIndex, n = 1) {
+        yield (0, swap_1.swapNEON)(nonce, accIndex, n);
     });
 }
 function start() {
     return __awaiter(this, void 0, void 0, function* () {
         // WRAP NEONS
-        // await wrapNeons();
-        // console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
-        // await ensureAllowance();
-        // await delay(20000); //adding delays to ensure the transaction nonce is updated...
-        // console.log("...DONE...");
-        yield main();
+        yield (0, swap_1.wrapNeons)();
+        console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
+        yield (0, swap_1.ensureAllowance)();
+        yield (0, helpers_1.delay)(10000); //adding delays to ensure the transaction nonce is updated...
+        console.log("...DONE...");
+        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
+            const nonce = yield (0, swap_1.getTransactionCount)(i);
+            console.log(nonce);
+            main(nonce, i);
+        }
     });
 }
 start();
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit();
+});
+process.on('uncaughtException', (reason, promise) => {
+    console.error('Unhandled Exception at:', promise, 'reason:', reason);
     process.exit();
 });
