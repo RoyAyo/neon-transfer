@@ -51,7 +51,7 @@ export async function swapTokens(accountIndex: number, TOKEN_ADDRESS_FROM: IToke
 
         withTimeout(tx.wait(), 60000)
             .then((receipt: any) => {
-                console.log(`swap successful: ${receipt.transactionHash}`);
+                console.log(`swap successful for ${MAIN_ADDRESS[accountIndex]} hash: ${receipt.transactionHash}`);
                 if(TOKEN_ADDRESS_FROM.address === USDT_TOKEN.address) {
                     events[accountIndex].emit('usdt_complete', accountIndex, count);
                 } else {
@@ -178,7 +178,7 @@ export function addEvents(event: EventEmitter, i: number) {
 
     event.on('job_failed', async (job: Job, error: any, accIndex: number, nonce: number, count: number) => {
         try {
-            console.log("Jobs FAILED: ", nonce, MAIN_ADDRESS[accIndex], count);
+            console.log("SWAP FAILED for: ", nonce, MAIN_ADDRESS[accIndex], count);
 
             if(error instanceof TimeoutError) {
                 await queues[accIndex].add(job.name, job.data);
@@ -186,7 +186,7 @@ export function addEvents(event: EventEmitter, i: number) {
                 if(error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
                     delay(4000);
                     const nonce = await getTransactionCount(accIndex);
-                    main(nonce, count);
+                    main(nonce, accIndex, count);
                 } else {
                     console.error("Please restart server for address, ", MAIN_ADDRESS[accIndex], error);
                 }

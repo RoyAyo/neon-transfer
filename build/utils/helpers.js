@@ -50,7 +50,7 @@ function swapTokens(accountIndex_1, TOKEN_ADDRESS_FROM_1, TOKEN_ADDRESS_TO_1, de
             });
             withTimeout(tx.wait(), 60000)
                 .then((receipt) => {
-                console.log(`swap successful: ${receipt.transactionHash}`);
+                console.log(`swap successful for ${config_1.MAIN_ADDRESS[accountIndex]} hash: ${receipt.transactionHash}`);
                 if (TOKEN_ADDRESS_FROM.address === constants_1.USDT_TOKEN.address) {
                     config_1.events[accountIndex].emit('usdt_complete', accountIndex, count);
                 }
@@ -180,7 +180,7 @@ function addEvents(event, i) {
     }));
     event.on('job_failed', (job, error, accIndex, nonce, count) => __awaiter(this, void 0, void 0, function* () {
         try {
-            console.log("Jobs FAILED: ", nonce, config_1.MAIN_ADDRESS[accIndex], count);
+            console.log("SWAP FAILED for: ", nonce, config_1.MAIN_ADDRESS[accIndex], count);
             if (error instanceof TimeoutError) {
                 yield config_1.queues[accIndex].add(job.name, job.data);
             }
@@ -188,7 +188,7 @@ function addEvents(event, i) {
                 if (error.message.split(" ")[0] === 'nonce' || error.message.split(" ")[0] === 'replacement') {
                     delay(4000);
                     const nonce = yield (0, swap_1.getTransactionCount)(accIndex);
-                    (0, main_1.main)(nonce, count);
+                    (0, main_1.main)(nonce, accIndex, count);
                 }
                 else {
                     console.error("Please restart server for address, ", config_1.MAIN_ADDRESS[accIndex], error);

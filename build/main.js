@@ -21,19 +21,22 @@ function main(nonce_1, accIndex_1) {
 }
 function start() {
     return __awaiter(this, void 0, void 0, function* () {
-        // WRAP NEONS
-        yield (0, swap_1.wrapNeons)();
-        console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
-        yield (0, swap_1.ensureAllowance)();
-        yield (0, helpers_1.delay)(10000); //adding delays to ensure the transaction nonce is updated...
-        console.log("...TOKEN APPROVALS DONE...");
-        for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
-            const nonce = yield (0, swap_1.getTransactionCount)(i);
-            main(nonce, i);
+        try {
+            yield (0, swap_1.wrapNeons)();
+            console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
+            yield (0, swap_1.ensureAllowance)();
+            yield (0, helpers_1.delay)(10000); //adding delays to ensure the transaction nonce is updated...
+            console.log("...TOKEN APPROVALS DONE...");
+            for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
+                const nonce = yield (0, swap_1.getTransactionCount)(i);
+                main(nonce, i);
+            }
+        }
+        catch (error) {
+            console.error('APPLICATION ERROR: ', error);
         }
     });
 }
-start();
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     process.exit();
@@ -42,3 +45,4 @@ process.on('uncaughtException', (reason, promise) => {
     console.error('Unhandled Exception at:', promise, 'reason:', reason);
     process.exit();
 });
+start();

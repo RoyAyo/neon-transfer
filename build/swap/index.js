@@ -105,19 +105,24 @@ function swapUSDT(nonce, accIndex, count) {
 function ensureAllowance() {
     return __awaiter(this, void 0, void 0, function* () {
         for (let i = 0; i < config_1.MAIN_ADDRESS.length; i++) {
-            const allowance_NEON = yield (0, helpers_1.getAllowance)(config_1.wallets[i], constants_1.DEXS[0].router, constants_1.WRAPPED_NEON_TOKEN.address);
-            const allowance_USDT = yield (0, helpers_1.getAllowance)(config_1.wallets[i], constants_1.DEXS[0].router, constants_1.USDT_TOKEN.address);
-            const minAmount_Neon = (0, units_1.parseUnits)("100", constants_1.WRAPPED_NEON_TOKEN.decimal);
-            const minAmount_USDT = (0, units_1.parseUnits)("100", constants_1.USDT_TOKEN.decimal);
-            if (allowance_NEON.lt(minAmount_Neon)) {
-                console.error("INSUFFICIENT AMOUNT OF NEON ALLOWED FOR ADDRESS ", config_1.MAIN_ADDRESS[i]);
-                yield (0, helpers_1.approveToken)(config_1.wallets[i], constants_1.DEXS[0], constants_1.WRAPPED_NEON_TOKEN);
-                console.log(`APPROVED MORE TOKENS`);
+            try {
+                const allowance_NEON = yield (0, helpers_1.getAllowance)(config_1.wallets[i], constants_1.DEXS[0].router, constants_1.WRAPPED_NEON_TOKEN.address);
+                const allowance_USDT = yield (0, helpers_1.getAllowance)(config_1.wallets[i], constants_1.DEXS[0].router, constants_1.USDT_TOKEN.address);
+                const minAmount_Neon = (0, units_1.parseUnits)("100", constants_1.WRAPPED_NEON_TOKEN.decimal);
+                const minAmount_USDT = (0, units_1.parseUnits)("100", constants_1.USDT_TOKEN.decimal);
+                if (allowance_NEON.lt(minAmount_Neon)) {
+                    console.error("INSUFFICIENT AMOUNT OF NEON ALLOWED FOR ADDRESS ", config_1.MAIN_ADDRESS[i]);
+                    yield (0, helpers_1.approveToken)(config_1.wallets[i], constants_1.DEXS[0], constants_1.WRAPPED_NEON_TOKEN);
+                    console.log(`APPROVED MORE TOKENS`);
+                }
+                if (allowance_USDT.lt(minAmount_USDT)) {
+                    console.error("INSUFFICIENT AMOUNT OF USDT ALLOWED FOR ADDRESS ", config_1.MAIN_ADDRESS[i]);
+                    yield (0, helpers_1.approveToken)(config_1.wallets[i], constants_1.DEXS[0], constants_1.USDT_TOKEN);
+                    console.log(`APPROVED MORE TOKENS`);
+                }
             }
-            if (allowance_USDT.lt(minAmount_USDT)) {
-                console.error("INSUFFICIENT AMOUNT OF USDT ALLOWED FOR ADDRESS ", config_1.MAIN_ADDRESS[i]);
-                yield (0, helpers_1.approveToken)(config_1.wallets[i], constants_1.DEXS[0], constants_1.USDT_TOKEN);
-                console.log(`APPROVED MORE TOKENS`);
+            catch (error) {
+                console.error("Unable to run approval for ", config_1.MAIN_ADDRESS[i]);
             }
         }
     });
