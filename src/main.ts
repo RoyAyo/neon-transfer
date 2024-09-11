@@ -1,41 +1,37 @@
 import { MAIN_ADDRESS } from "./config";
 import { IAccount } from "./core/interfaces";
 import { startNEONSwap, unWrapNeons, wrapNeons } from "./swap";
+import { unwrapNeon } from "./swap/neon";
 import { DEFAULT_NEON_TO_WRAP } from "./utils/constants";
 import { ensureAllowance, getTransactionCount } from "./utils/contract.helpers";
 import { findAccountIndexByPublicKey } from "./utils/helpers";
 
 const task = process.argv[2] ?? 'main';
-const arg = process.argv[3]; // pub key for main but amount for wrapping
-const arg2 = process.argv[4];  // pubKey for wrapping
+
+
 
 export async function main(txCount: IAccount, accIndex: number, count: number = 1) {
      await startNEONSwap(txCount, accIndex, count);
 }
 
-async function startWrap(pubKey?: string, amountToWrap?: string) {
+async function startWrap(command: string = "wrap", amountToWrap?: string, pubKey?: string[]) {
      try {
           let amountIn = (amountToWrap !== 'all' && isNaN(Number(amountToWrap))) ? String(DEFAULT_NEON_TO_WRAP) : amountToWrap!;
-          let accountIndex;
-          if(pubKey) {
-               accountIndex = findAccountIndexByPublicKey(pubKey);
+          let accounts: number[] = [];
+          if(pubKey && pubKey.length > 0) {
+               accounts = findAccountIndexByPublicKey(pubKey);
+          } else {
+               accounts = Array.from({ length: MAIN_ADDRESS.length }, (_, index) => index);
           }
-          await wrapNeons(amountIn, accountIndex);
+          for(let accountIndex of accounts) {
+               if(command === 'wrap') {
+                    await wrapNeons(amountIn, accountIndex);
+               } else {
+                    await unWrapNeons(amountIn, accountIndex)
+               }
+          }
      } catch (error: any) {
           console.error(error.message)
-     }
-}
-
-async function startUnwrap(amountToUnwrap?: string, pubKey?: string,) {
-     try {
-          let amountIn = (amountToUnwrap !== 'all' && isNaN(Number(amountToUnwrap))) ? String(DEFAULT_NEON_TO_WRAP) : amountToUnwrap!;
-          let accountIndex;
-          if(pubKey) {
-               accountIndex = findAccountIndexByPublicKey(pubKey);
-          }
-          await unWrapNeons(amountIn, accountIndex);
-     } catch (error) {
-          console.error(error);
      }
 }
 
@@ -45,19 +41,19 @@ async function startAllowance() {
      console.log("...TOKEN APPROVALS DONE...");
 }
 
-async function start(pubKey: string) {
+async function start(pubKey: string[]) {
      try {
-          if(pubKey) {
-               const accountIndex = findAccountIndexByPublicKey(pubKey);
-               const txCount = await getTransactionCount(accountIndex);
-               console.log(txCount);
-               main(txCount, accountIndex);
+          let accounts: number[] = []
+          if(pubKey && pubKey.length > 0) {
+               accounts = findAccountIndexByPublicKey(pubKey);
           } else {
-               for (let accountIndex = 0; accountIndex < MAIN_ADDRESS.length; accountIndex++) {
-                    const txCount = await getTransactionCount(accountIndex);
-                    console.log(txCount);
-                    main(txCount, accountIndex);
-               }
+               accounts = Array.from({ length: MAIN_ADDRESS.length }, (_, index) => index);
+          }
+          for (let accountIndex of accounts) {
+               console.log(accountIndex);
+               // const txCount = await getTransactionCount(accountIndex);
+               // console.log(txCount);
+               // main(txCount, accountIndex);
           }
      } catch (error) {
           console.error('APPLICATION ERROR: ', error);
@@ -77,15 +73,18 @@ process.on('uncaughtException', (reason, promise) => {
 
 switch (task.toLowerCase()) {
      case "wrap":
-          startWrap(arg, arg2);
+     case "unwrap": {
+          const arg = process.argv[3];
+          const arg2 = process.argv.slice(4);
+          startWrap(task, arg, arg2);
           break;
-     case "unwrap":
-          startUnwrap(arg, arg2);
-          break;
+     }
      case "allowance":
           startAllowance();
           break;
-     default:
+     default: {
+          const arg = process.argv.slice(3);
           start(arg);
           break;
+     }
 }

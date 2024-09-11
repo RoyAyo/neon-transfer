@@ -35,31 +35,26 @@ export async function swapUSDT(accountIndex: number, count?: number) {
     });
 };
 
-export async function wrapNeons(amountToWrap: string, accountIndex?: number): Promise<void> {
-    const length = accountIndex ? accountIndex + 1 : MAIN_ADDRESS.length;
-    for(let i = accountIndex ?? 0; i < length; i++) {
-        const balance = await getBalance(provider, MAIN_ADDRESS[i]);
-        console.log(`My total NEON BALANCE for address ${MAIN_ADDRESS[i]} is ${formatUnits(balance,WRAPPED_NEON_TOKEN.decimal)}`);
-        const amountToSwap = amountToWrap === 'all' ? balance : parseUnits(amountToWrap, WRAPPED_NEON_TOKEN.decimal);
-        if (balance.lt(amountToSwap)) {
-            console.log(`Not enough Neon to wrap in ${MAIN_ADDRESS[i]}, deposit More ....`);
-            continue;
-        } else {
-            await wrapNeon(wallets[i], amountToSwap);
-        }
+export async function wrapNeons(amountToWrap: string, accountIndex: number): Promise<void> {
+    const balance = await getBalance(provider, MAIN_ADDRESS[accountIndex]);
+    console.log(`My total NEON BALANCE for address ${MAIN_ADDRESS[accountIndex]} is ${formatUnits(balance,WRAPPED_NEON_TOKEN.decimal)}`);
+    const amountToSwap = amountToWrap === 'all' ? balance : parseUnits(amountToWrap, WRAPPED_NEON_TOKEN.decimal);
+    if (balance.lt(amountToSwap)) {
+        console.log(`Not enough Neon to wrap in ${MAIN_ADDRESS[accountIndex]}, deposit More ....`);
+        return;
+    } else {
+        await wrapNeon(wallets[accountIndex], amountToSwap);
     }
 }
 
-export async function unWrapNeons(amountToUnwrap: string, accountIndex?: number) {
-    const length = accountIndex ? accountIndex + 1 : MAIN_ADDRESS.length;
-    for (let i = accountIndex ?? 0; i < length; i++) {
-        const balance = await getBalance(provider, MAIN_ADDRESS[i], WRAPPED_NEON_TOKEN);
-        const amountToSwap = amountToUnwrap === 'all' ? balance : parseUnits(amountToUnwrap, WRAPPED_NEON_TOKEN.decimal);
-        console.log(formatUnits(balance, WRAPPED_NEON_TOKEN.decimal));
-        console.log(`My total WNEON BALANCE for address ${MAIN_ADDRESS[i]} is ${formatUnits(balance,WRAPPED_NEON_TOKEN.decimal)}`);
-        if(balance.gt(0)) {
-            await unwrapNeon(wallets[i], amountToSwap);
-        }
-        console.log("UNWRAPPED WNEON :", formatUnits(amountToSwap, WRAPPED_NEON_TOKEN.decimal));
+export async function unWrapNeons(amountToUnwrap: string, accountIndex: number) {
+    const balance = await getBalance(provider, MAIN_ADDRESS[accountIndex], WRAPPED_NEON_TOKEN);
+    const amountToSwap = amountToUnwrap === 'all' ? balance : parseUnits(amountToUnwrap, WRAPPED_NEON_TOKEN.decimal);
+    console.log(`My total WNEON BALANCE for address ${MAIN_ADDRESS[accountIndex]} is ${formatUnits(balance,WRAPPED_NEON_TOKEN.decimal)}`);
+    if (balance.lt(amountToSwap)) {
+        console.log(`Not enough Neon to unwrap in ${MAIN_ADDRESS[accountIndex]}, deposit More ....`);
+        return;
+    } else {
+        await unwrapNeon(wallets[accountIndex], amountToSwap);
     }
 }
