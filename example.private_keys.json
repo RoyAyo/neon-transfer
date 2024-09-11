@@ -9,6 +9,11 @@
             "name": "WALLET NAME 2",
             "public_key": "PUBLIC_KEY_2",
             "private_key": "PRIVATE_KEY_2"
+        },
+        {
+            "name": "WALLET NAME 3",
+            "public_key": "PUBLIC_KEY_2",
+            "private_key": "PRIVATE_KEY_2"
         }
     ]
 }
