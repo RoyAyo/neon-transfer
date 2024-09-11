@@ -1,17 +1,17 @@
-import Redis from "ioredis";
-import { Job, Queue, Worker } from "bullmq";
+import { DEXS, PROXY_URL, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { parseUnits } from "@ethersproject/units";
 import { Wallet } from "@ethersproject/wallet";
-import Jsonkeys from "../../private_keys.test.json"
+import { Job, Queue, Worker } from "bullmq";
+import Redis from "ioredis";
+import { EventEmitter } from "stream";
+import winston from "winston";
 
 import { ITokens, TOKENS } from "../core/interfaces";
-import { EventEmitter } from "stream";
-import { swap } from "../swap";
-import { DEXS, PROXY_URL, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
-import { addEvents, } from "../utils/helpers";
-import WorkerEvent from "../utils/worker.event";
-import winston from "winston";
+import { swapTokens } from "../swap/neon";
+import WorkerEvent, { addEvents } from "../utils/worker.event";
+
+import Jsonkeys from "../../private_keys.test.json"
 
 export const provider = new JsonRpcProvider(PROXY_URL);
 const redis = new Redis({
@@ -61,7 +61,7 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
           ],
     }));
 
-    const queueName = `y--${i}`;
+    const queueName = `${MAIN_ADDRESS[i]}x-${i}`;
     // CONFIGURE QUEUES
     queues.push(new Queue(queueName, {
       defaultJobOptions: {
@@ -72,11 +72,8 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
 
     // CONFIGURE WORKERS FOR  QUEUE
     const worker = new Worker(queueName, async (job: Job) => {
-        const token: ITokens = job.data.token;
+        const token: ITokens = job.data.TOKEN_ADDRESS_FROM;
         const amount = job.data.amount;
-        const accountIndex = job.data.accountIndex;
-        const nonce = job.data.nonce;
-        const count = job.data.count;
 
         try {
             const otherToken = token.name === TOKENS.WNEON ? USDT_TOKEN : WRAPPED_NEON_TOKEN;
@@ -85,14 +82,18 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
             
             const rand = Math.floor(Math.random() * DEXS.length); // use a random dex
             const dex = DEXS[rand];
-            
-            await swap(accountIndex, token, otherToken, dex, amountToSwap, nonce, count, job);
 
+            job.data.dex = dex;
+            job.data.TOKEN_ADDRESS_TO = otherToken
+            job.data.amountIn = amountToSwap;
+            job.data.increase = job.data.increase ?? 0;
+            
+            await swapTokens(job);
         } catch (error: any) {
             console.error(error);
             throw error;
         }
-    }, { connection: redis, concurrency: 2});
+    }, { connection: redis, concurrency: 1});
 
     workers.push(worker);
 }

@@ -1,30 +1,28 @@
-import { MAIN_ADDRESS, wallets } from "./config";
-import { ensureAllowance, getTransactionCount, swapNEON, wrapNeons } from "./swap";
-import { checkPrice, delay } from "./utils/helpers";
+import { MAIN_ADDRESS } from "./config";
 import { IAccount } from "./core/interfaces";
-import { DEXS, slippage, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "./utils/constants";
-import { formatUnits, parseUnits } from "@ethersproject/units";
+import { startNEONSwap } from "./swap";
+import { getTransactionCount } from "./utils/contract.helpers";
+import {  delay } from "./utils/helpers";
 
-export async function main(nonce: IAccount, accIndex: number, n: number = 1) {
-     await swapNEON(nonce, accIndex, n);
+export async function main(txCount: IAccount, accIndex: number, count: number = 1) {
+     await startNEONSwap(txCount, accIndex, count);
 }
 
 export async function start() {
      try {
-          await wrapNeons();
-     
-          console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
-          await ensureAllowance();
-          await delay(10000); //adding delays to ensure the transaction nonce is updated...
-          console.log("...TOKEN APPROVALS DONE...");
+          // await wrapNeons();
+          
+          // comment this after the first time...
+          // console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
+          // await ensureAllowance();
+          // await delay(10000); //adding delays to ensure the transaction nonce is updated...
+          // console.log("...TOKEN APPROVALS DONE...");
 
-          for (let i = 0; i < 1; i++) {
-               const nonce = await getTransactionCount(i);
-               main(nonce, i);
-          }
-
-          // const p = await checkPrice(wallets[0], DEXS[1], WRAPPED_NEON_TOKEN, USDT_TOKEN, parseUnits("1", 18));
-          // console.log(formatUnits(p, 6));
+          // for (let accountIndex = 0; accountIndex < MAIN_ADDRESS.length; accountIndex++) {
+          //      const txCount = await getTransactionCount(accountIndex);
+          //      console.log(txCount);
+          //      main(txCount, accountIndex);
+          // }
      } catch (error) {
           console.error('APPLICATION ERROR: ', error);
      }
