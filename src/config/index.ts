@@ -38,7 +38,7 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
 
     // CONFIGURE EVENT EMITTERS
     const event = new WorkerEvent();
-    addEvents(event, i);
+    addEvents(event);
     events.push(event);
 
     // CONFIGURE LOGGERS

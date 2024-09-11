@@ -5,6 +5,8 @@ import { JOB_RETRIES, NEON_MOVED_PER_SET, NO_OF_SETS } from "./constants";
 import { swapUSDT } from "../swap";
 import { main } from "../main";
 import { TimeoutError } from "./errors";
+import { delay } from "./helpers";
+import { getTransactionCount } from "./contract.helpers";
 
 class WorkerEvent extends EventEmitter{
     count: number = 0;
@@ -14,26 +16,26 @@ class WorkerEvent extends EventEmitter{
     }
 }
 
-export function addEvents(event: EventEmitter, i: number) {
+export function addEvents(event: EventEmitter) {
     event.on('neon_completed', NEON_COMPLETED);
 
-    event.on('usdt_complete', USDT_Completed);
+    event.on('usdt_completed', USDT_Completed);
 
-    event.on('jobs_complete', JOBS_COMPLETED);
+    event.on('jobs_completed', JOBS_COMPLETED);
 
     event.on('job_failed', JOB_FAILED)
 }
 
 
-async function NEON_COMPLETED(event: WorkerEvent, job: Job) {
+async function NEON_COMPLETED(job: Job) {
     console.log("Neon COMPLETED", job.data.count);
 
     if(job.data.count % NEON_MOVED_PER_SET === 0) {
         console.log("SWAPPING USDT BACK");
-        await swapUSDT(job.data.accIndex, job.data.count);
+        await swapUSDT(job.data.accountIndex, job.data.count);
     } else {
         // repeat job and increase count
-        await queues[job.data.accIndex].add(job.name, {
+        await queues[job.data.accountIndex].add(job.name, {
             ...job.data,
             count: job.data.count + 1
         });
@@ -44,9 +46,13 @@ async function USDT_Completed(job: Job) {
     console.log("BATCH COMPLETE...");
 
     if(job.data.count >= (NEON_MOVED_PER_SET * NO_OF_SETS)) {
-        events[job.data.accountIndex].emit('job_completed',job.data.accIndex, job.data.count);
+        events[job.data.accountIndex].emit('jobs_completed',job.data.accIndex, job.data.count);
     } else {
-        await main(job.data.accIndex, job.data.count);
+        await delay(5000); // wait 5s before starting a new batch
+        console.log("Starting New Batch..");
+        const txCount = await getTransactionCount(job.data.accountIndex);
+        console.log(txCount);
+        await main(txCount, job.data.accountIndex, job.data.count);
     }
 }
 

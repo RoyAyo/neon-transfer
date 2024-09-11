@@ -22,12 +22,13 @@ export const USDT_TOKEN: ITokens = {
 export const AMOUNT_NEON_TO_START_WITH = 20;
 export const FIXED_TOKENS_TO_APPROVE = "1000";
 export const NEON_AMOUNT = 0.3;
+export const DEFAULT_NEON_TO_WRAP = 10;
 export const NEON_MOVED_PER_SET = 1;
 export const NO_OF_SETS = 3;
-export const JOB_RETRIES = 3;
+export const JOB_RETRIES = 5;
 export const slippage = 98; // %;
 export const swapDeadline = BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes
-export const TRANSACTION_TIMEOUT = process.env.env === 'dev' ? 180000 : 400000; //400s // 6m
+export const TRANSACTION_TIMEOUT = process.env.env === 'dev' ? 120000 : 400000; //400s // 6m
 
 export const ERC20_ABI = [
     "function deposit() payable",
@@ -41,7 +42,7 @@ export const ERC20_ABI = [
 export const DEXS: IDEX[] = [
   {
       name: "Moraswap",
-      router: process.env.env === "test" ? "" : "0x594e37b9f39f5d31dec4a8c1cc4fe2e254153034",
+      router: process.env.env === "dev" ? "0x491FFC6eE42FEfB4Edab9BA7D5F3e639959E081B" : "0x594e37b9f39f5d31dec4a8c1cc4fe2e254153034",
       abi: [
         "function getAmountsOut(uint256 amountIn, address[] memory path) public view returns (uint[] memory amounts)",
         "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline)"

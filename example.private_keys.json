@@ -1,0 +1,14 @@
+{
+    "keys": [
+        {
+            "name": "WALLET NAME",
+            "public_key": "PUBLIC_KEY_1",
+            "private_key": "PRIVATE_KEY_1"
+        },
+        {
+            "name": "WALLET NAME 2",
+            "public_key": "PUBLIC_KEY_2",
+            "private_key": "PRIVATE_KEY_2"
+        }
+    ]
+}

@@ -32,11 +32,9 @@ export async function swapTokens(job: Job): Promise<void> {
         console.log(`Transaction STARTED... Address: ${wallet.address}, Amount: ${parsedAmount} From: ${TOKEN_ADDRESS_FROM.name}`);
         
         if(increase > 0) {
-            console.log("Increasing Gas price")
-            // increase by 120%.. 140...
+            console.log("Increasing Gas price");
             gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(100 + (20 * increase))).div(100);
         }
-
 
         const options = increase ? {
         } : {
@@ -56,12 +54,14 @@ export async function swapTokens(job: Job): Promise<void> {
 
         withTimeout(tx.wait(), TRANSACTION_TIMEOUT).then((receipt: any) => {
             if(TOKEN_ADDRESS_FROM.address === USDT_TOKEN.address) {
-                events[accountIndex].emit('usdt_complete', job);
+                events[accountIndex].emit('usdt_completed', job);
             } else {
-                events[accountIndex].emit('neon_swapped', job);
+                events[accountIndex].emit('neon_completed', job);
             }
             loggers[accountIndex].info(`swap successful: ${receipt.transactionHash}`)
+            console.log('swap successful: ', receipt.transactionHash);
         }).catch(e => {
+            console.error("Transaction timed out: ")
             loggers[accountIndex].error(`Transaction timed-out:`);
             events[accountIndex].emit('job_failed', job, e);
         });
@@ -92,7 +92,7 @@ export async function wrapNeon(wallet: Wallet, amountToWrap: BigNumber): Promise
 export async function unwrapNeon(wallet: Wallet, amountToUnwrap: BigNumber): Promise<void> {
     const wrapContract = new Contract(WRAPPED_NEON_TOKEN.address, ERC20_ABI, wallet);
     try {
-        console.log("Unwrapping Neon...")
+        console.log(`Unwrapping Neon for...  ${wallet.address}`);
         const tx = await wrapContract.withdraw(amountToUnwrap);
         await tx.wait();
       
