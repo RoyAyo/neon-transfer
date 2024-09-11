@@ -1,28 +1,32 @@
 import { MAIN_ADDRESS } from "./config";
 import { IAccount } from "./core/interfaces";
-import { startNEONSwap } from "./swap";
-import { getTransactionCount } from "./utils/contract.helpers";
-import {  delay } from "./utils/helpers";
+import { startNEONSwap, wrapNeons } from "./swap";
+import { ensureAllowance, getTransactionCount } from "./utils/contract.helpers";
+
+const command = process.argv[2] ?? 'main';
 
 export async function main(txCount: IAccount, accIndex: number, count: number = 1) {
      await startNEONSwap(txCount, accIndex, count);
 }
 
-export async function start() {
-     try {
-          // await wrapNeons();
-          
-          // comment this after the first time...
-          // console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
-          // await ensureAllowance();
-          // await delay(10000); //adding delays to ensure the transaction nonce is updated...
-          // console.log("...TOKEN APPROVALS DONE...");
+async function startWrap() {
+     await wrapNeons();
+}
 
-          // for (let accountIndex = 0; accountIndex < MAIN_ADDRESS.length; accountIndex++) {
-          //      const txCount = await getTransactionCount(accountIndex);
-          //      console.log(txCount);
-          //      main(txCount, accountIndex);
-          // }
+async function startAllowance() {
+     console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
+     await ensureAllowance();
+     console.log("...TOKEN APPROVALS DONE...");
+}
+
+async function start() {
+     try {
+
+          for (let accountIndex = 0; accountIndex < MAIN_ADDRESS.length; accountIndex++) {
+               const txCount = await getTransactionCount(accountIndex);
+               console.log(txCount);
+               main(txCount, accountIndex);
+          }
      } catch (error) {
           console.error('APPLICATION ERROR: ', error);
      }
@@ -38,4 +42,15 @@ process.on('uncaughtException', (reason, promise) => {
      process.exit();
 });
 
-start();
+
+switch (command.toLowerCase()) {
+     case "wrap":
+          startWrap();
+          break;
+     case "allowance":
+          startAllowance();
+          break;
+     default:
+          start();
+          break;
+}
