@@ -20,15 +20,16 @@ export const USDT_TOKEN: ITokens = {
 };
 
 export const AMOUNT_NEON_TO_START_WITH = 20;
-export const FIXED_TOKENS_TO_APPROVE = "1000";
-export const NEON_AMOUNT = 0.3;
 export const DEFAULT_NEON_TO_WRAP = 10;
-export const NEON_MOVED_PER_SET = 1;
-export const NO_OF_SETS = 3;
+export const FIXED_TOKENS_TO_APPROVE = "1000";
 export const JOB_RETRIES = 5;
-export const slippage = 98; // %;
-export const swapDeadline = BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes
-export const TRANSACTION_TIMEOUT = process.env.env === 'dev' ? 120000 : 400000; //400s // 6m
+export const NEON_AMOUNT = 0.3;
+export const MANUAL_GAS_LIMIT=1_000_000;
+export const NEON_MOVED_PER_SET = 3;
+export const NO_OF_SETS = 3;
+export const SLIPPAGE = 99; // %;
+export const SWAP_DEADLINE = BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes
+export const TRANSACTION_TIMEOUT = process.env.env === 'dev' ? 120000 : 200000; //400s // 6m
 
 export const ERC20_ABI = [
     "function deposit() payable",

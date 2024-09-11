@@ -11,7 +11,7 @@ import { ITokens, TOKENS } from "../core/interfaces";
 import { swapTokens } from "../swap/neon";
 import WorkerEvent, { addEvents } from "../utils/worker.event";
 
-import Jsonkeys from "../../private_keys.test.json"
+import Jsonkeys from "../../private_keys.json"
 
 export const provider = new JsonRpcProvider(PROXY_URL);
 const redis = new Redis({

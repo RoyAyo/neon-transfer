@@ -50,10 +50,9 @@ async function start(pubKey: string[]) {
                accounts = Array.from({ length: MAIN_ADDRESS.length }, (_, index) => index);
           }
           for (let accountIndex of accounts) {
-               console.log(accountIndex);
-               // const txCount = await getTransactionCount(accountIndex);
-               // console.log(txCount);
-               // main(txCount, accountIndex);
+               const txCount = await getTransactionCount(accountIndex);
+               console.log(txCount);
+               main(txCount, accountIndex);
           }
      } catch (error) {
           console.error('APPLICATION ERROR: ', error);

@@ -1,8 +1,8 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Wallet } from "@ethersproject/wallet";
-import { ERC20_ABI, slippage, swapDeadline, TRANSACTION_TIMEOUT, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
-import { events, loggers, provider, wallets } from "../config";
+import { ERC20_ABI, MANUAL_GAS_LIMIT, SLIPPAGE, SWAP_DEADLINE, TRANSACTION_TIMEOUT, USDT_TOKEN, WRAPPED_NEON_TOKEN } from "../utils/constants";
+import { events, loggers, MAIN_ADDRESS, provider, wallets } from "../config";
 import { Job } from "bullmq";
 import { checkPrice } from "../utils/contract.helpers";
 import { formatUnits } from "@ethersproject/units";
@@ -21,7 +21,7 @@ export async function swapTokens(job: Job): Promise<void> {
 
     let gasPrice;
     const wallet = wallets[accountIndex];
-    const amountOutMinInTokenFrom: BigNumber = amountIn.mul(slippage).div(100);
+    const amountOutMinInTokenFrom: BigNumber = amountIn.mul(SLIPPAGE).div(100);
     const amountOutMinInTokenTo: BigNumber = await checkPrice(wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountOutMinInTokenFrom);
     const parsedAmount = formatUnits(amountIn, TOKEN_ADDRESS_FROM.decimal);
 
@@ -32,13 +32,13 @@ export async function swapTokens(job: Job): Promise<void> {
         console.log(`Transaction STARTED... Address: ${wallet.address}, Amount: ${parsedAmount} From: ${TOKEN_ADDRESS_FROM.name}`);
         
         if(increase > 0) {
-            console.log("Increasing Gas price");
             gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(100 + (20 * increase))).div(100);
         }
 
         const options = increase ? {
         } : {
-            gasPrice
+            gasPrice,
+            gasLimit: MANUAL_GAS_LIMIT,
         };
 
         const tx = await router.swapExactTokensForTokens(
@@ -46,11 +46,13 @@ export async function swapTokens(job: Job): Promise<void> {
             amountOutMinInTokenTo,
             path,
             wallet.address,
-            swapDeadline,
+            SWAP_DEADLINE,
             {
                 ...options
             }
         );
+
+        
 
         withTimeout(tx.wait(), TRANSACTION_TIMEOUT).then((receipt: any) => {
             if(TOKEN_ADDRESS_FROM.address === USDT_TOKEN.address) {
@@ -59,10 +61,10 @@ export async function swapTokens(job: Job): Promise<void> {
                 events[accountIndex].emit('neon_completed', job);
             }
             loggers[accountIndex].info(`swap successful: ${receipt.transactionHash}`)
-            console.log('swap successful: ', receipt.transactionHash);
-        }).catch(e => {
+            console.log(`swap successful for address ${MAIN_ADDRESS[accountIndex]} hash: ${receipt.transactionHash}`);
+        }).catch((e: any) => {
             console.error("Transaction timed out: ")
-            loggers[accountIndex].error(`Transaction timed-out:`);
+            loggers[accountIndex].error(`Transaction timed-out: ${e.message}`);
             events[accountIndex].emit('job_failed', job, e);
         });
 

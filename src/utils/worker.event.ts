@@ -72,11 +72,11 @@ async function JOB_FAILED(job: Job, error: Error) {
         retry
     } = job.data;
     
-    console.log("SWAP FAILED for: ", MAIN_ADDRESS[accountIndex], count, error.message);
+    console.error("SWAP FAILED for: ", MAIN_ADDRESS[accountIndex], error.message);
     
     try {
         // automatically just fail if retries are enough
-        if (job.data.retry < JOB_RETRIES) {
+        if (job.data.retry >= JOB_RETRIES) {
             throw new Error("Retries Maxed out...");
         }
 
@@ -90,7 +90,7 @@ async function JOB_FAILED(job: Job, error: Error) {
         }
 
         // if job is a replacement job error OR cannot estimate gas... Increase the gas fee and manually include
-        if(error.message.split(" ")[0] === 'replacement' || error.message.split(" ")[2] === 'gas') {
+        if(error.message.split(" ")[0] === 'replacement' || error.message.split(" ")[1] === 'estimate') {
             await queues[accountIndex].add(job.name, {
                 ...job.data,
                 increase: job.data.increase + 1,
