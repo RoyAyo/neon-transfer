@@ -19,8 +19,8 @@ export async function swapTokens(job: Job): Promise<void> {
         increase,
     } = job.data;
 
+    let gasPrice;
     const wallet = wallets[accountIndex];
-
     const amountOutMinInTokenFrom: BigNumber = amountIn.mul(slippage).div(100);
     const amountOutMinInTokenTo: BigNumber = await checkPrice(wallet, dex, TOKEN_ADDRESS_FROM, TOKEN_ADDRESS_TO, amountOutMinInTokenFrom);
     const parsedAmount = formatUnits(amountIn, TOKEN_ADDRESS_FROM.decimal);
@@ -30,8 +30,6 @@ export async function swapTokens(job: Job): Promise<void> {
     const router = new Contract(dex.router, dex.abi, wallet);
     try {
         console.log(`Transaction STARTED... Address: ${wallet.address}, Amount: ${parsedAmount} From: ${TOKEN_ADDRESS_FROM.name}`);
-        
-        let gasPrice;
         
         if(increase > 0) {
             console.log("Increasing Gas price")
