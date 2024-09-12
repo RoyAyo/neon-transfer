@@ -46,13 +46,13 @@ async function USDT_Completed(job: Job) {
     console.log("BATCH COMPLETE...");
 
     if(job.data.count >= (NEON_MOVED_PER_SET * NO_OF_SETS)) {
-        events[job.data.accountIndex].emit('jobs_completed',job.data.accIndex, job.data.count);
+        events[job.data.accountIndex].emit('jobs_completed',job);
     } else {
         await delay(5000); // wait 5s before starting a new batch
         console.log("Starting New Batch..");
         const txCount = await getTransactionCount(job.data.accountIndex);
         console.log(txCount);
-        await main(txCount, job.data.accountIndex, job.data.count);
+        await main(txCount, job.data.accountIndex, job.data.count + 1);
     }
 }
 

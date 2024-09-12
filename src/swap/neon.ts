@@ -38,7 +38,7 @@ export async function swapTokens(job: Job): Promise<void> {
         const options = increase ? {
         } : {
             gasPrice,
-            gasLimit: MANUAL_GAS_LIMIT,
+            gasLimit: MANUAL_GAS_LIMIT
         };
 
         const tx = await router.swapExactTokensForTokens(
