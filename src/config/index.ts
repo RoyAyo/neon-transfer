@@ -16,7 +16,7 @@ import { jobsToBeDone } from "../main";
 
 export const provider = new JsonRpcProvider(PROXY_URL);
 const redis = new Redis({
-    host: 'localhost',
+    host: process.env.REDIS_HOST ?? 'localhost',
     port: 6379,
     maxRetriesPerRequest: null
 });
@@ -64,7 +64,7 @@ for(let i = 0; i < NO_OF_KEYS; i++) {
           ],
     }));
 
-    const queueName = `${MAIN_ADDRESS[i]}-x-${i}`;
+    const queueName = `${MAIN_ADDRESS[i]}-y-${i}`;
     // CONFIGURE QUEUES
     queues.push(new Queue(queueName, {
       defaultJobOptions: {

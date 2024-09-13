@@ -29,6 +29,7 @@ async function startWrap(command: string = "wrap", amountToWrap?: string, pubKey
                     await unWrapNeons(amountIn, accountIndex)
                }
           }
+          process.exit();
      } catch (error: any) {
           console.error(error.message)
      }

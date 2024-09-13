@@ -48,7 +48,6 @@ export async function wrapNeons(amountToWrap: string, accountIndex: number): Pro
     } else {
         await wrapNeon(wallets[accountIndex], amountToSwap);
     }
-    process.exit();
 }
 
 export async function unWrapNeons(amountToUnwrap: string, accountIndex: number) {
@@ -61,5 +60,4 @@ export async function unWrapNeons(amountToUnwrap: string, accountIndex: number) 
     } else {
         await unwrapNeon(wallets[accountIndex], amountToSwap);
     }
-    process.exit();
 }
