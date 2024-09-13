@@ -66,6 +66,4 @@ i.e Move Neon_amount for neon_moved_per_set times to usdt, move usdt back, then 
 
 # NOTE
 
-- Network can be slow and transactions may fail for differents reasons. These transactions will attempt to restart a couple of times and stop.
-
-- You can always re-run, cancel instruction with `ctrl + c` and rerun.
+- Network can be slow and transactions may fail for differents reasons. These transactions will attempt to restart a couple of times before.
