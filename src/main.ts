@@ -38,6 +38,7 @@ async function startAllowance() {
      console.log("... ENSURING ALL TOKENS ARE APPROVED ...");
      await ensureAllowance();
      console.log("...TOKEN APPROVALS DONE...");
+     process.exit();
 }
 
 async function start(pubKey: string[]) {
