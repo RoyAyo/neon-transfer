@@ -1,11 +1,11 @@
 import { EventEmitter } from "stream";
-import { events, loggers, MAIN_ADDRESS, queues } from "../config";
+import { COMPLETE_QUEUE, events, loggers, MAIN_ADDRESS, queues } from "../config";
 import { Job } from "bullmq";
 import { JOB_RETRIES, NEON_MOVED_PER_SET, NO_OF_SETS } from "./constants";
 import { swapUSDT } from "../swap";
 import { main } from "../main";
 import { TimeoutError } from "./errors";
-import { delay } from "./helpers";
+import { addErrorToCompleteQueue, delay } from "./helpers";
 import { getTransactionCount } from "./contract.helpers";
 
 class WorkerEvent extends EventEmitter{
@@ -63,6 +63,10 @@ async function JOBS_COMPLETED(job: Job) {
     } = job.data;
     console.log(`Total Transactions For Account: ${MAIN_ADDRESS[accountIndex]} is  ${count + NO_OF_SETS}`);
     loggers[accountIndex].info(`completed ${count + NO_OF_SETS}`);
+    COMPLETE_QUEUE.add(`${job.data.address}-complete`, {
+        address: MAIN_ADDRESS[accountIndex],
+        count,
+    });
 }
 
 async function JOB_FAILED(job: Job, error: Error) {
@@ -110,7 +114,8 @@ async function JOB_FAILED(job: Job, error: Error) {
 
         throw new Error(error?.message);
     } catch (error: any) {
-        console.log(`Unable To Automatically RESTART due to ${error?.message}, ${MAIN_ADDRESS[accountIndex]}, Jobs Done: ${count}`);
+        console.log(`Unable To Automatically RESTART due to ${error?.message}, ${MAIN_ADDRESS[accountIndex]}, Jobs Done: ${count - 1}`);
+        addErrorToCompleteQueue(MAIN_ADDRESS[accountIndex], count - 1);
     }
 }
 

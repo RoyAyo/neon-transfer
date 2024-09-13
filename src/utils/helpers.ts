@@ -1,4 +1,4 @@
-import { MAIN_ADDRESS } from "../config";
+import { COMPLETE_QUEUE, MAIN_ADDRESS } from "../config";
 import { TimeoutError } from "./errors";
 
 export function delay(ms: number) {
@@ -27,4 +27,11 @@ export function findAccountIndexByPublicKey(pubKey: string[]): number[] {
     }
      
     return accounts;
+}
+
+export function addErrorToCompleteQueue(address: string, count: number) {
+    COMPLETE_QUEUE.add(`${address}-complete`, {
+        address,
+        count,
+    });
 }

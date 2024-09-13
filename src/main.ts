@@ -1,4 +1,4 @@
-import { MAIN_ADDRESS } from "./config";
+import {  MAIN_ADDRESS, NO_OF_KEYS } from "./config";
 import { IAccount } from "./core/interfaces";
 import { startNEONSwap, unWrapNeons, wrapNeons } from "./swap";
 import { unwrapNeon } from "./swap/neon";
@@ -7,8 +7,7 @@ import { ensureAllowance, getTransactionCount } from "./utils/contract.helpers";
 import { findAccountIndexByPublicKey } from "./utils/helpers";
 
 const task = process.argv[2] ?? 'main';
-
-
+export let jobsToBeDone = NO_OF_KEYS;
 
 export async function main(txCount: IAccount, accIndex: number, count: number = 1) {
      await startNEONSwap(txCount, accIndex, count);
@@ -49,6 +48,7 @@ async function start(pubKey: string[]) {
           } else {
                accounts = Array.from({ length: MAIN_ADDRESS.length }, (_, index) => index);
           }
+          jobsToBeDone = accounts.length;
           for (let accountIndex of accounts) {
                const txCount = await getTransactionCount(accountIndex);
                console.log(txCount);

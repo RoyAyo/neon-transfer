@@ -1,15 +1,17 @@
-import { AMOUNT_NEON_TO_START_WITH, DEFAULT_NEON_TO_WRAP, NEON_AMOUNT, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
+import { AMOUNT_NEON_TO_START_WITH, DEFAULT_NEON_TO_WRAP, NEON_AMOUNT, NEON_MOVED_PER_SET, USDT_TOKEN, WRAPPED_NEON_TOKEN, } from "../utils/constants";
 import { formatUnits, parseUnits } from "@ethersproject/units";
 
 import { loggers, MAIN_ADDRESS, provider, queues, wallets } from "../config";
 import { IAccount, } from "../core/interfaces";
 import { unwrapNeon, wrapNeon } from "./neon";
 import { getBalance } from "../utils/contract.helpers";
+import { addErrorToCompleteQueue } from "../utils/helpers";
 
 export async function startNEONSwap(account: IAccount, accountIndex: number, count: number = 1) {
     if(account.balance.lte(0)) {
         loggers[accountIndex].error("Not Enough Wrapped Neon To Transact");
         console.error(`${MAIN_ADDRESS[accountIndex]} has 0 wNeon and cannot continue...`);
+        addErrorToCompleteQueue(MAIN_ADDRESS[accountIndex], count - 1);
         return;
     }
     queues[accountIndex].add(`${MAIN_ADDRESS[accountIndex]}-neon-job`, {
@@ -20,13 +22,14 @@ export async function startNEONSwap(account: IAccount, accountIndex: number, cou
     });
 };
 
-export async function swapUSDT(accountIndex: number, count?: number) {
+export async function swapUSDT(accountIndex: number, count: number = NEON_MOVED_PER_SET) {
     const balance = await getBalance(provider, MAIN_ADDRESS[accountIndex], USDT_TOKEN);
     if(Number(formatUnits(balance, USDT_TOKEN.decimal)) <= 0) {
-        console.log("USDT TOO SMALL FOR TRANSFER");;
+        console.log("USDT TOO SMALL FOR TRANSFER");
+        addErrorToCompleteQueue(MAIN_ADDRESS[accountIndex], count - 1);
         return;
     }
-    console.log("MOVING USDT WITH BALANCE ", formatUnits(balance, 6), " back");
+    console.log("MOVING USDT WITH BALANCE ", formatUnits(balance, USDT_TOKEN.decimal), " back");
     queues[accountIndex].add(`${MAIN_ADDRESS[accountIndex]}-usdt-job`, {
         TOKEN_ADDRESS_FROM: USDT_TOKEN,
         amount: formatUnits(balance, USDT_TOKEN.decimal),
