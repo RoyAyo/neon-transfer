@@ -13,6 +13,7 @@ import WorkerEvent, { addEvents } from "../utils/worker.event";
 
 import Jsonkeys from "../../private_keys.json"
 import { jobsToBeDone } from "../main";
+import { shutdown } from "../utils/helpers";
 
 export const provider = new JsonRpcProvider(PROXY_URL);
 const redis = new Redis({
@@ -109,7 +110,7 @@ export const COMPLETE_QUEUE = new Queue('complete_queue', {
   connection: redis,
 });
 
-new Worker('complete_queue', async (job: Job) => {
+export const jobsFinishedWorker = new Worker('complete_queue', async (job: Job) => {
   const address: string = job.data.address;
   const count: number = job.data.count;
 
@@ -124,8 +125,7 @@ new Worker('complete_queue', async (job: Job) => {
       count = count + Math.floor(count / NEON_MOVED_PER_SET);
       console.log(`ADDRESS: ${addressKey}; Transactions Completed: ${count}`);
     }
-    console.log('----DONE!!!----');
-    process.exit();
+    shutdown();
   }
 }, { connection: redis });
 

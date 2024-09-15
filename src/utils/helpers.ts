@@ -1,4 +1,4 @@
-import { COMPLETE_QUEUE, MAIN_ADDRESS } from "../config";
+import { COMPLETE_QUEUE, jobsFinishedWorker, MAIN_ADDRESS, workers } from "../config";
 import { TimeoutError } from "./errors";
 
 export function delay(ms: number) {
@@ -34,4 +34,13 @@ export function addErrorToCompleteQueue(address: string, count: number) {
         address,
         count,
     });
+}
+
+export async function shutdown() {
+    for(let worker of workers) {
+        await worker.close(true);
+    }
+    await jobsFinishedWorker.close();
+    console.log('----DONE!!!----');
+    process.exit();
 }

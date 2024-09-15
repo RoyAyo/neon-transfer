@@ -4,7 +4,7 @@ import { startNEONSwap, unWrapNeons, wrapNeons } from "./swap";
 import { unwrapNeon } from "./swap/neon";
 import { DEFAULT_NEON_TO_WRAP } from "./utils/constants";
 import { ensureAllowance, getTransactionCount } from "./utils/contract.helpers";
-import { findAccountIndexByPublicKey } from "./utils/helpers";
+import { findAccountIndexByPublicKey, shutdown } from "./utils/helpers";
 
 const task = process.argv[2] ?? 'main';
 export let jobsToBeDone = NO_OF_KEYS;
@@ -71,6 +71,9 @@ process.on('uncaughtException', (reason, promise) => {
      process.exit();
 });
 
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 switch (task.toLowerCase()) {
      case "wrap":
