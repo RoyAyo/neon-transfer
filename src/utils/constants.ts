@@ -19,14 +19,14 @@ export const USDT_TOKEN: ITokens = {
   decimal: 6
 };
 
-export const AMOUNT_NEON_TO_START_WITH = 20;
+export const AMOUNT_WNEON_TO_START_WITH = 3;
 export const DEFAULT_NEON_TO_WRAP = 10;
 export const FIXED_TOKENS_TO_APPROVE = "1000";
-export const JOB_RETRIES = 5;
+export const JOB_RETRIES = 3;
 export const NEON_AMOUNT = 0.2;
 export const MANUAL_GAS_LIMIT=4_000_000;
 export const NEON_MOVED_PER_SET = 2;
-export const NO_OF_SETS = 1;
+export const NO_OF_SETS = 2;
 export const SLIPPAGE = 98; // %;
 export const SWAP_DEADLINE = BigNumber.from(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes
 export const TRANSACTION_TIMEOUT = process.env.env === 'dev' ? 120000 : 200000; //400s // 6m

@@ -9,7 +9,6 @@ import { formatUnits } from "@ethersproject/units";
 import { withTimeout } from "../utils/helpers";
 
 export async function swapTokens(job: Job): Promise<void> {
-
     const {
         accountIndex,
         dex,
@@ -32,11 +31,11 @@ export async function swapTokens(job: Job): Promise<void> {
         console.log(`Transaction STARTED... Address: ${wallet.address}, Amount: ${parsedAmount} From: ${TOKEN_ADDRESS_FROM.name}`);
         
         if(increase > 0) {
-            gasPrice = (await provider.getGasPrice()).mul(BigNumber.from(100 + (20 * increase))).div(100);
+            gasPrice = (await provider.getGasPrice()) //.mul(BigNumber.from(100 + (20 * increase))).div(100);
         }
 
-        const options = increase ? {
-        } : {
+        // changed on purpose to always include gasLimit for now
+        const options = {
             gasPrice,
             gasLimit: MANUAL_GAS_LIMIT
         };
@@ -51,8 +50,6 @@ export async function swapTokens(job: Job): Promise<void> {
                 ...options
             }
         );
-
-        
 
         withTimeout(tx.wait(), TRANSACTION_TIMEOUT).then((receipt: any) => {
             if(TOKEN_ADDRESS_FROM.address === USDT_TOKEN.address) {

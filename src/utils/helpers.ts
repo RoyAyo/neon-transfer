@@ -36,11 +36,11 @@ export function addErrorToCompleteQueue(address: string, count: number) {
     });
 }
 
-export async function shutdown() {
+export async function shutdown(done: boolean = true) {
     for(let worker of workers) {
-        await worker.close(true);
+        await worker.close(false);
     }
     await jobsFinishedWorker.close();
-    console.log('----DONE!!!----');
+    done ? console.log('----DONE!!!----') : console.log('----Shutdown!!!--');
     process.exit();
 }

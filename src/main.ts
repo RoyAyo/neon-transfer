@@ -61,19 +61,23 @@ async function start(pubKey: string[]) {
      }
 }
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', async (reason, promise) => {
      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-     process.exit();
+     await shutdown(false);
 });
 
-process.on('uncaughtException', (reason, promise) => {
+process.on('uncaughtException', async (reason, promise) => {
      console.error('Unhandled Exception at:', promise, 'reason:', reason);
-     process.exit();
+     await shutdown(false);
 });
 
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', async () => {
+     await shutdown(false);
+});
+process.on('SIGTERM', async () => {
+     await shutdown(false);
+});
 
 switch (task.toLowerCase()) {
      case "wrap":
